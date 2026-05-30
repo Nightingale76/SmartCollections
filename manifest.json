@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "xhs-smart-collection",
+  "name": "memora",
   "version": "1.0.1",
-  "description": "智能收藏夹助手 - 提取、管理和导出收藏内容",
+  "description": "Memora 智能收藏助手 - 提取、分类、检索和导出多平台收藏内容"
   "permissions": [
     "activeTab",
     "storage"
