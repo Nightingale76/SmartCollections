@@ -109,7 +109,16 @@
           const existingIndex = collections.findIndex(c => c.id === item.id);
 
           if (existingIndex === -1) {
-            item.tags = AI_TAGS ? AI_TAGS.getLocalTagsForItem(item) : [];
+            if (AI_TAGS && AI_TAGS.generateTags) {
+              const textForTags = [
+                item.title,
+                item.author,
+                item.url
+              ].filter(Boolean).join(' ');
+              item.tags = AI_TAGS.generateTags(textForTags);
+            } else if (!item.tags || item.tags.length === 0) {
+              item.tags = ['其他'];
+            }
             item.savedAt = new Date().toISOString();
             collections.push(item);
             addedCount++;

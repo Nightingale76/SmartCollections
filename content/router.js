@@ -34,6 +34,17 @@
   }
 
   function convertBridgeItemToStandard(item) {
+    const AI_TAGS = window.MEMORA_AI_TAGS;
+    const textForTags = [
+      item.title,
+      item.author,
+      item.url
+    ].filter(Boolean).join(' ');
+    
+    const tags = AI_TAGS && AI_TAGS.generateTags 
+      ? AI_TAGS.generateTags(textForTags) 
+      : [];
+
     return {
       platform: PLATFORMS.XIAOHONGSHU,
       id: item.note_id,
@@ -48,7 +59,7 @@
         comments: null,
         collects: null
       },
-      tags: [],
+      tags: tags,
       collectedAt: item.captured_at,
       _raw: item
     };
