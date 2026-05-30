@@ -5,7 +5,7 @@
 }
 
 body {
-  width: 380px;
+  width: 420px;
   max-height: 600px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   background: linear-gradient(135deg, #fff0f3 0%, #ffe4ec 100%);
@@ -60,17 +60,22 @@ body {
 
 .actions {
   display: flex;
-  gap: 8px;
+  gap: 10px;
 }
 
-.actions button,
-.api-settings button {
+.actions button {
   flex: 1;
-  padding: 10px;
+  min-width: 0;
+  height: 42px;
+  padding: 0 14px;
   border: none;
   border-radius: 8px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -85,16 +90,6 @@ body {
   box-shadow: 0 2px 8px rgba(230, 57, 70, 0.3);
 }
 
-#generateTagsBtn {
-  background: linear-gradient(135deg, #457b9d 0%, #60a3bc 100%);
-  color: white;
-}
-
-#generateTagsBtn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(69, 123, 157, 0.3);
-}
-
 #exportBtn {
   background: linear-gradient(135deg, #2a9d8f 0%, #48c6b3 100%);
   color: white;
@@ -103,19 +98,6 @@ body {
 #exportBtn:hover {
   transform: translateY(-1px);
   box-shadow: 0 2px 8px rgba(42, 157, 143, 0.3);
-}
-
-.api-settings {
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid #ffccd5;
-  border-radius: 8px;
-  padding: 8px;
-}
-
-#generateAiTagsBtn {
-  width: 100%;
-  background: linear-gradient(135deg, #6d597a 0%, #b56576 100%);
-  color: white;
 }
 
 .collection-list {
