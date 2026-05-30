@@ -444,6 +444,7 @@ function extractCardInfo(card) {
     author: null,
     cover: null,
     excerpt: null,
+    mediaType: null,
     stats: {
       likes: null,
       comments: null,
@@ -487,6 +488,8 @@ function extractCardInfo(card) {
   if (visibleText) {
     item.excerpt = visibleText.slice(0, 500);
   }
+
+  item.mediaType = detectMediaType(card, visibleText);
 
   const titleElements = card.querySelectorAll('h1, h2, h3, h4, .title, .note-title, .content-title, .desc, .note-desc, [class*="title"], [class*="desc"]');
   for (const el of titleElements) {
@@ -551,4 +554,16 @@ function extractCardInfo(card) {
   });
   
   return item;
+}
+
+function detectMediaType(card, text) {
+  const className = String(card.className || '').toLowerCase();
+  const aria = String(card.getAttribute?.('aria-label') || '').toLowerCase();
+  const combined = `${className} ${aria} ${text || ''}`.toLowerCase();
+
+  if (card.querySelector?.('video') || /video|play|播放|视频/.test(combined)) {
+    return 'video';
+  }
+
+  return 'note';
 }
