@@ -130,20 +130,38 @@ function getMessageText(message) {
   return message?.text || message?.content || '';
 }
 
-async function generateClassificationTags(item) {
-  const localTags = ensureTags(generateTags([
+const AI_REQUEST_TIMEOUT_MS = 15000;
+
+function getLocalTagsForItem(item) {
+  return ensureTags(generateTags([
     item.title,
     item.author,
     item.excerpt,
     item.url
   ].join(' ')));
+}
+
+async function fetchWithTimeout(url, options, timeoutMs = AI_REQUEST_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function generateClassificationTags(item, options = {}) {
+  const { includeImage = false } = options;
+  const localTags = getLocalTagsForItem(item);
 
   if (!AI_CONFIG.apiKey) {
     return localTags;
   }
 
   const content = [{ type: 'text', text: buildClassificationPrompt(item) }];
-  if (item.cover) {
+  if (includeImage && item.cover) {
     content.push({
       type: 'image_url',
       image_url: { url: item.cover }
@@ -151,14 +169,14 @@ async function generateClassificationTags(item) {
   }
 
   try {
-    const response = await fetch(getAiEndpoint(), {
+    const response = await fetchWithTimeout(getAiEndpoint(), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${AI_CONFIG.apiKey}`
       },
       body: JSON.stringify({
-        model: AI_CONFIG.model || 'qwen3.6-plus',
+        model: AI_CONFIG.model || 'qwen-plus',
         messages: [
           {
             role: 'user',
@@ -185,11 +203,32 @@ async function generateClassificationTags(item) {
   }
 }
 
-async function applyClassificationTags(items) {
-  for (let index = 0; index < items.length; index++) {
-    showToast(`正在生成分类 ${index + 1}/${items.length}`);
-    items[index].tags = await generateClassificationTags(items[index]);
+function setClassificationStatus(message) {
+  const statusEl = document.getElementById('classificationStatus');
+  if (!statusEl) return;
+
+  if (message) {
+    statusEl.textContent = message;
+    statusEl.hidden = false;
+  } else {
+    statusEl.textContent = '';
+    statusEl.hidden = true;
   }
+}
+
+async function applyClassificationTags(items, options = {}) {
+  const { includeImage = false, onItemDone } = options;
+
+  for (let index = 0; index < items.length; index += 1) {
+    setClassificationStatus(`正在生成分类 ${index + 1}/${items.length}…`);
+    items[index].tags = await generateClassificationTags(items[index], { includeImage });
+
+    if (typeof onItemDone === 'function') {
+      await onItemDone(items[index], index, items.length);
+    }
+  }
+
+  setClassificationStatus('');
 }
 
 function showToast(message) {
@@ -322,12 +361,19 @@ async function openCollection(url, domIndex) {
 }
 
 async function extractCollections() {
+  const extractBtn = document.getElementById('extractBtn');
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   
   if (!tab.url.includes('xiaohongshu.com')) {
     showToast('请在小红书页面使用');
     return;
   }
+
+  if (extractBtn.disabled) {
+    return;
+  }
+
+  extractBtn.disabled = true;
   
   try {
     const response = await chrome.tabs.sendMessage(tab.id, { action: 'extractCollections' });
@@ -337,16 +383,26 @@ async function extractCollections() {
         const existing = collections.find(c => c.id === item.id);
         return {
           ...existing,
-          ...item
+          ...item,
+          tags: getLocalTagsForItem({ ...existing, ...item })
         };
       });
-
-      await applyClassificationTags(collections);
 
       await chrome.storage.local.set({ xhs_collections: collections });
       renderCollections();
       updateTagFilter();
-      showToast(`成功提取 ${collections.length} 条收藏`);
+      showToast(`已提取 ${collections.length} 条，正在后台生成分类…`);
+
+      await applyClassificationTags(collections, {
+        includeImage: false,
+        onItemDone: async () => {
+          await chrome.storage.local.set({ xhs_collections: collections });
+          renderCollections();
+          updateTagFilter();
+        }
+      });
+
+      showToast(`完成：共 ${collections.length} 条收藏`);
     } else {
       if (response?.debug) {
         console.info('XHS extraction debug:', response.debug);
@@ -356,13 +412,19 @@ async function extractCollections() {
       renderCollections();
       updateTagFilter();
       const debugHint = response?.debug
-        ? ` links:${response.debug.visibleExploreLinks} cards:${response.debug.visibleDataCards} imgs:${response.debug.visibleImages}`
+        ? ` bridge:${response.debug.bridgeItems || 0} links:${response.debug.visibleExploreLinks} cards:${response.debug.visibleDataCards}`
         : '';
-      showToast(`未找到收藏内容${debugHint}`);
+      const refreshHint = response?.debug && !response.debug.bridgeItems
+        ? '，请在收藏页刷新后重试'
+        : '';
+      showToast(`未找到收藏内容${debugHint}${refreshHint}`);
     }
   } catch (error) {
     console.error('提取失败:', error);
     showToast('提取失败，请刷新页面重试');
+  } finally {
+    extractBtn.disabled = false;
+    setClassificationStatus('');
   }
 }
 

@@ -14,7 +14,7 @@
 - **Manifest V3** - 使用最新的 Chrome 扩展规范
 - **原生 JavaScript** - 不依赖任何框架
 - **chrome.storage.local** - 本地存储收藏数据
-- **content script** - 从页面提取收藏信息
+- **content script** - 从页面 DOM、SSR 状态（`__INITIAL_STATE__`）和收藏分页 API 提取信息
 
 ## 文件结构
 
@@ -52,8 +52,9 @@ xhs-smart-collection/
 ### 3. 测试功能
 
 1. 打开小红书网站并登录
-2. 访问你的收藏页面：`https://www.xiaohongshu.com/favorites`
-3. 确保页面上有可见的收藏卡片
+2. 进入个人主页，点击「收藏」Tab（或访问 `https://www.xiaohongshu.com/favorites`）
+3. **刷新一次页面**（确保扩展在页面加载前注入，才能读到首屏数据）
+4. 确保页面上有可见的收藏卡片（可先向下滚动加载几屏）
 4. 点击浏览器工具栏中的插件图标
 5. 点击「提取当前页面收藏」按钮
 6. 查看提取的收藏内容列表

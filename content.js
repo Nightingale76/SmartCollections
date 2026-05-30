@@ -1,3 +1,103 @@
+const BRIDGE_SOURCE = 'xhs-smart-collection';
+const bridgeItems = new Map();
+let bridgeReady = false;
+
+injectPageBridge();
+window.addEventListener('message', handleBridgeMessage, false);
+
+function injectPageBridge() {
+  if (document.documentElement?.dataset?.xhsSmartCollectionBridge === 'true') {
+    return;
+  }
+
+  const mount = () => {
+    if (document.documentElement?.dataset?.xhsSmartCollectionBridge === 'true') {
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = chrome.runtime.getURL('page-bridge.js');
+    script.async = false;
+    script.dataset.xhsSmartCollectionBridge = 'true';
+    script.addEventListener('load', () => script.remove());
+    (document.head || document.documentElement).appendChild(script);
+    document.documentElement.dataset.xhsSmartCollectionBridge = 'true';
+  };
+
+  if (document.documentElement) {
+    mount();
+  } else {
+    document.addEventListener('DOMContentLoaded', mount, { once: true });
+  }
+}
+
+function handleBridgeMessage(event) {
+  if (event.source !== window || event.data?.source !== BRIDGE_SOURCE) {
+    return;
+  }
+
+  const { type, payload = {} } = event.data;
+
+  if (type === 'BRIDGE_READY') {
+    bridgeReady = true;
+    return;
+  }
+
+  if (type === 'INITIAL_SNAPSHOT' || type === 'COLLECT_PAGE') {
+    mergeBridgeItems(payload.items || []);
+  }
+}
+
+function mergeBridgeItems(items) {
+  items.forEach(rawItem => {
+    const mapped = mapBridgeItem(rawItem);
+    if (!mapped?.id) return;
+    bridgeItems.set(mapped.id, mapped);
+  });
+}
+
+function mapBridgeItem(rawItem) {
+  if (!rawItem?.note_id) {
+    return null;
+  }
+
+  const likes = rawItem.liked_count ? parseInt(String(rawItem.liked_count).replace(/[^0-9]/g, ''), 10) : null;
+
+  return {
+    id: rawItem.note_id,
+    title: rawItem.title || null,
+    url: rawItem.url || `https://www.xiaohongshu.com/explore/${rawItem.note_id}`,
+    author: rawItem.author || null,
+    cover: rawItem.cover || null,
+    excerpt: rawItem.title || null,
+    mediaType: rawItem.note_type === 'video' ? 'video' : 'note',
+    stats: {
+      likes: Number.isFinite(likes) ? likes : null,
+      comments: null,
+      collection: null
+    },
+    source: rawItem.source || 'bridge',
+    extractedAt: rawItem.captured_at || new Date().toISOString()
+  };
+}
+
+function requestBridgeSnapshot() {
+  window.dispatchEvent(new CustomEvent('xhs-smart-collection:scan-now'));
+}
+
+async function waitForBridgeItems(timeoutMs = 2500) {
+  requestBridgeSnapshot();
+
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < timeoutMs) {
+    if (bridgeItems.size > 0) {
+      await delay(200);
+      return;
+    }
+    await delay(150);
+  }
+}
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'extractCollections') {
     extractCollectionsFromPage().then(collections => {
@@ -27,6 +127,8 @@ async function extractCollectionsFromPage() {
     await delay(300);
   }
 
+  await waitForBridgeItems();
+
   const collectionMode = getCollectionMode();
   const collectionCards = getVisibleNoteCards(collectionMode);
 
@@ -37,23 +139,44 @@ async function extractCollectionsFromPage() {
     }
   });
 
+  bridgeItems.forEach(item => collections.push({ ...item }));
+
   return dedupeCollections(collections);
 }
 
 function isCollectionLikePage() {
-  return /\/favorites\b|\/collection\b|\/collect\b/i.test(window.location.href);
+  const url = window.location.href;
+  if (/\/favorites\b|\/collection\b|\/collect\b/i.test(url)) {
+    return true;
+  }
+
+  if (/\/user\/profile\//i.test(url) && (findActiveCollectionTab() || findCollectionTab())) {
+    return true;
+  }
+
+  return false;
 }
 
 function getCollectionMode() {
   const url = window.location.href;
   const explicitFavoritesPage = /\/favorites\b|\/collection\b|\/collect\b/i.test(url);
+  const profilePage = /\/user\/profile\//i.test(url);
   const activeCollectionTab = findActiveCollectionTab();
+  const collectionTab = findCollectionTab();
   const hasCollectionSourceLinks = document.querySelector('a[href*="/explore/"][href*="collect"], a[href*="/note/"][href*="collect"], a[href*="/explore/"][href*="favorite"], a[href*="/note/"][href*="favorite"]');
 
   return {
     activeCollectionTab,
-    sourceLinksOnly: !activeCollectionTab && !explicitFavoritesPage && Boolean(hasCollectionSourceLinks),
-    isCollectionPage: explicitFavoritesPage || Boolean(activeCollectionTab) || Boolean(hasCollectionSourceLinks)
+    sourceLinksOnly: !activeCollectionTab &&
+      !explicitFavoritesPage &&
+      !profilePage &&
+      !collectionTab &&
+      Boolean(hasCollectionSourceLinks),
+    isCollectionPage: explicitFavoritesPage ||
+      profilePage ||
+      Boolean(activeCollectionTab) ||
+      Boolean(collectionTab) ||
+      Boolean(hasCollectionSourceLinks)
   };
 }
 
@@ -236,8 +359,11 @@ function scoreVisualCardCandidate(el, text, depth) {
 }
 
 function isLikelyCollectionLink(link, collectionMode) {
-  const href = link.href || '';
-  if (!/xiaohongshu\.com/.test(href) || !/\/(explore|note)\//.test(href)) {
+  const href = link.href || link.getAttribute?.('href') || '';
+  const hasNotePath = /xiaohongshu\.com/.test(href) &&
+    /\/(explore|note|discovery\/item)\//.test(href);
+
+  if (!hasNotePath) {
     return false;
   }
 
@@ -246,7 +372,11 @@ function isLikelyCollectionLink(link, collectionMode) {
   }
 
   if (collectionMode.sourceLinksOnly) {
-    return false;
+    return /xsec_source=[^&#]*(collect|favorite|fav)/i.test(href);
+  }
+
+  if (collectionMode.isCollectionPage && !collectionMode.activeCollectionTab) {
+    return true;
   }
 
   const tab = collectionMode.activeCollectionTab;
@@ -402,6 +532,8 @@ function getExtractionDebug(collections) {
   return {
     url: window.location.href,
     found: collections.length,
+    bridgeReady,
+    bridgeItems: bridgeItems.size,
     collectionTabText: collectionTab ? normalizeText(collectionTab.textContent).slice(0, 40) : '',
     activeCollectionTabText: activeCollectionTab ? normalizeText(activeCollectionTab.textContent).slice(0, 40) : '',
     visibleExploreLinks: visibleExploreLinks.length,
@@ -466,7 +598,7 @@ function extractCardInfo(card) {
   
   if (linkElement) {
     const href = linkElement.href;
-    const match = href.match(/\/(?:explore|note)\/([^/?#]+)/);
+    const match = href.match(/\/(?:explore|note|discovery\/item)\/([^/?#]+)/);
     if (match) {
       item.id = match[1];
     } else {

@@ -58,6 +58,14 @@ body {
   background-color: white;
 }
 
+.classification-status {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #ff2442;
+  text-align: center;
+}
+
 .actions {
   display: flex;
   gap: 10px;
