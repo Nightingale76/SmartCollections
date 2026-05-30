@@ -73,6 +73,18 @@ body {
   padding: 0 10px;
 }
 
+/* Make the "全部标签" option more prominent */
+#tagFilter {
+  color: #ffb3c1; /* brighter pink for visibility */
+  font-weight: 700;
+  border-color: rgba(254,44,85,0.3);
+}
+
+#tagFilter option:first-child {
+  color: #ff7b9a; /* standout color for the default "全部标签" */
+  font-weight: 800;
+}
+
 .actions {
   display: flex;
   gap: 10px;
@@ -287,11 +299,8 @@ body {
   width: auto;
 }
 
-<<<<<<< HEAD
 
 
-=======
->>>>>>> origin/c-c
 .footer {
   text-align: center;
   padding-top: 8px;
