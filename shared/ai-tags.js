@@ -59,6 +59,9 @@
   }
 
   function buildClassificationPrompt(item) {
+    const mediaType = item.type || item.mediaType || '未知';
+    const textContent = item.text || item.excerpt || '无';
+    
     return [
       '你是小红书收藏内容分类器。',
       '只生成归档用的分类标签，不要生成标题，不要提取笔记自带话题标签。',
@@ -71,10 +74,10 @@
       '避免泛标签：生活、分享、小红书、收藏、笔记、推荐。',
       '',
       `标题：${item.title || '无'}`,
-      `内容形态：${item.type || item.mediaType || '未知'}`,
+      `内容形态：${mediaType}`,
       `作者：${item.author || '无'}`,
       `链接：${item.url || '无'}`,
-      `可见文本：${item.text || item.excerpt || '无'}`,
+      `可见文本：${textContent}`,
       `是否有封面图：${item.cover ? '有' : '无'}`
     ].join('\n');
   }
