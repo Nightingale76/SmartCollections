@@ -122,7 +122,7 @@ function renderCollections() {
   }
   
   list.innerHTML = filtered.map(item => `
-    <div class="collection-item" data-id="${escapeHtml(item.id)}" data-url="${escapeHtml(item.url || '')}" title="${item.url ? 'Open original' : ''}">
+    <div class="collection-item" data-id="${escapeHtml(item.id)}" data-url="${escapeHtml(item.url || '')}" data-dom-index="${Number.isInteger(item.domIndex) ? item.domIndex : ''}" title="${item.url ? 'Open original' : ''}">
       ${item.cover ? `<img src="${item.cover}" class="cover" alt="封面">` : ''}
       <div class="info">
         <div class="title">${escapeHtml(item.title) || '无标题'}</div>
@@ -155,13 +155,26 @@ function escapeHtml(text) {
   });
 }
 
-function openCollection(url) {
-  if (!url) {
+async function openCollection(url, domIndex) {
+  if (url) {
+    chrome.tabs.create({ url });
+    return;
+  }
+
+  if (!Number.isInteger(domIndex)) {
     showToast('No URL');
     return;
   }
 
-  chrome.tabs.create({ url });
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const response = await chrome.tabs.sendMessage(tab.id, {
+    action: 'openCollectionCard',
+    domIndex
+  });
+
+  if (!response?.success) {
+    showToast('Open failed');
+  }
 }
 
 async function extractCollections() {
@@ -190,11 +203,17 @@ async function extractCollections() {
       updateTagFilter();
       showToast(`成功提取 ${collections.length} 条收藏`);
     } else {
+      if (response?.debug) {
+        console.info('XHS extraction debug:', response.debug);
+      }
       collections = [];
       await chrome.storage.local.set({ xhs_collections: collections });
       renderCollections();
       updateTagFilter();
-      showToast('未找到收藏内容');
+      const debugHint = response?.debug
+        ? ` links:${response.debug.visibleExploreLinks} cards:${response.debug.visibleDataCards} imgs:${response.debug.visibleImages}`
+        : '';
+      showToast(`未找到收藏内容${debugHint}`);
     }
   } catch (error) {
     console.error('提取失败:', error);
@@ -415,7 +434,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const item = event.target.closest('.collection-item');
     if (item) {
-      openCollection(item.dataset.url);
+      const domIndex = item.dataset.domIndex === '' ? null : Number(item.dataset.domIndex);
+      openCollection(item.dataset.url, Number.isInteger(domIndex) ? domIndex : null);
     }
   });
   
