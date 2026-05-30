@@ -141,8 +141,8 @@
 
     const baseUrl = `https://www.xiaohongshu.com/explore/${encodeURIComponent(String(noteId))}`;
     const url = xsecToken
-      ? `${baseUrl}?xsec_token=${encodeURIComponent(String(xsecToken))}`
-      : baseUrl;
+      ? `${baseUrl}?xsec_token=${String(xsecToken)}&xsec_source=pc_collect`
+      : `${baseUrl}?xsec_source=pc_collect`;
 
     return {
       note_id: String(noteId),

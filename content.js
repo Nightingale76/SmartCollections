@@ -63,9 +63,7 @@ function mapBridgeItem(rawItem) {
     return null;
   }
 
-  const likes = rawItem.liked_count
-    ? parseInt(String(rawItem.liked_count).replace(/[^0-9]/g, ''), 10)
-    : null;
+  const likes = parseCompactCount(rawItem.liked_count);
 
   return {
     id: rawItem.note_id,
@@ -116,7 +114,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   if (request.action === 'openCollectionCard') {
-    const opened = openCollectionCard(request.domIndex);
+    const opened = openCollectionCard(request.domIndex, request.url);
     sendResponse({ success: opened });
   }
 
@@ -217,7 +215,7 @@ async function extractXhsCollections() {
   return dedupeCollections(collections);
 }
 
-async function extractDouyinCollections() {
+async function extractDouyinCollectionsLegacy() {
   await delay(1000);
 
   const results = [];
@@ -308,6 +306,193 @@ async function extractDouyinCollections() {
   }
 
   return dedupeCollections(results);
+}
+
+function parseCompactCount(value) {
+  const text = String(value || '').replace(/,/g, '').trim();
+  if (!text) return null;
+
+  const match = text.match(/(\d+(?:\.\d+)?)/);
+  if (!match) return null;
+
+  const number = Number(match[1]);
+  if (!Number.isFinite(number)) return null;
+
+  if (/万|w/i.test(text)) {
+    return Math.round(number * 10000);
+  }
+
+  return Math.round(number);
+}
+
+async function extractDouyinCollections() {
+  await delay(1000);
+
+  const results = [];
+  const seenCards = new Set();
+  const collectionPage = isDouyinCollectionPage();
+
+  const links = Array.from(document.querySelectorAll('a[href]'))
+    .filter(link => isVisible(link))
+    .filter(link => isDouyinCollectionVideoLink(link.href || link.getAttribute('href'), collectionPage));
+
+  links.forEach((link, index) => {
+    const card = getDouyinCardContainer(link);
+    if (!card || seenCards.has(card)) return;
+    seenCards.add(card);
+
+    const item = extractDouyinCardInfo(card, link.href || '', index);
+    if (item) results.push(item);
+  });
+
+  return dedupeCollections(results);
+}
+
+function extractDouyinCardInfo(card, preferredHref, index) {
+  const resolvedUrl = resolveDouyinVideoUrl(card, preferredHref);
+  if (!resolvedUrl) {
+    return null;
+  }
+
+  const id = getDouyinVideoIdFromUrl(resolvedUrl) || `dom-${index}`;
+  const text = cleanDouyinCardText(card?.textContent || '');
+  const img = card?.querySelector('img');
+  const video = card?.querySelector('video');
+  const title = pickDouyinTitle(card, text) || '抖音视频';
+
+  const safeTitle = isDouyinNoiseText(title) ? `Douyin video ${id}` : title;
+
+  return {
+    id: `douyin-${id}`,
+    title: safeTitle,
+    url: resolvedUrl,
+    author: null,
+    cover: img?.currentSrc || img?.src || img?.getAttribute('data-src') || video?.poster || null,
+    excerpt: text.slice(0, 500),
+    mediaType: 'video',
+    platform: '抖音',
+    stats: {
+      likes: null,
+      comments: null,
+      collection: null
+    },
+    extractedAt: new Date().toISOString()
+  };
+}
+
+function resolveDouyinVideoUrl(card, preferredHref) {
+  const hrefs = [
+    preferredHref,
+    ...Array.from(card?.querySelectorAll?.('a[href]') || []).map(link => link.href || link.getAttribute('href'))
+  ].filter(Boolean);
+
+  for (const href of hrefs) {
+    const id = getDouyinVideoIdFromUrl(href);
+    if (!id) continue;
+    return normalizeDouyinVideoUrl(href, id);
+  }
+
+  return '';
+}
+
+function normalizeDouyinVideoUrl(href, id) {
+  try {
+    const parsed = new URL(href, window.location.origin);
+    parsed.pathname = `/video/${id}`;
+    parsed.hash = '';
+    return parsed.href;
+  } catch (error) {
+    return `https://www.douyin.com/video/${encodeURIComponent(id)}`;
+  }
+}
+
+function getDouyinVideoIdFromUrl(url) {
+  const value = String(url || '');
+  return value.match(/\/video\/([^/?#]+)/)?.[1] ||
+    value.match(/\/note\/([^/?#]+)/)?.[1] ||
+    value.match(/[?&#]modal_id=([^&#]+)/)?.[1] ||
+    '';
+}
+
+function isDouyinCollectionVideoLink(url) {
+  const value = String(url || '');
+  if (!getDouyinVideoIdFromUrl(value)) {
+    return false;
+  }
+
+  return arguments[1] ||
+    /[?&#](modeFrom=userCollection|from_collection=|collection|favorite|fav)/i.test(value) ||
+    /\/user\/self\?modal_id=/i.test(value);
+}
+
+function isDouyinCollectionPage() {
+  const value = `${window.location.href} ${document.title} ${document.body?.innerText?.slice(0, 1200) || ''}`;
+  return /modeFrom=userCollection|收藏|我的收藏|喜欢|userCollection|favorite|collection/i.test(value);
+}
+
+function cleanDouyinCardText(text) {
+  return cleanCardText(text)
+    .replace(/算法推荐专项举报\s*sfjubao@bytedance\.com/ig, '')
+    .replace(/sfjubao@bytedance\.com/ig, '')
+    .replace(/算法推荐专项举报/ig, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function pickDouyinTitle(card, fallbackText) {
+  const attrs = ['aria-label', 'title', 'alt'];
+  const candidates = [];
+  const primaryLink = Array.from(card?.querySelectorAll?.('a[href]') || [])
+    .find(link => getDouyinVideoIdFromUrl(link.href || link.getAttribute('href')));
+  const primaryImage = card?.querySelector?.('img[alt], img[title]');
+
+  [primaryLink, primaryImage].filter(Boolean).forEach(el => {
+    attrs.forEach(attr => {
+      const value = el.getAttribute?.(attr);
+      if (value) candidates.push(value);
+    });
+  });
+
+  const nodes = [
+    ...Array.from(card?.querySelectorAll?.('h1, h2, h3, p, [class*="title"], [class*="desc"], [class*="content"]') || [])
+  ].filter(Boolean);
+
+  nodes.forEach(el => {
+    attrs.forEach(attr => {
+      const value = el.getAttribute?.(attr);
+      if (value) candidates.push(value);
+    });
+
+    const text = cleanDouyinCardText(el.textContent || '');
+    if (text && text.length <= 160) candidates.push(text);
+  });
+
+  if (fallbackText) candidates.push(fallbackText);
+
+  return candidates
+    .map(cleanDouyinCardText)
+    .map(text => text.replace(/^#\S+\s*/, '').trim())
+    .filter(text => text.length >= 2 && text.length <= 80)
+    .filter(text => !isDouyinNoiseText(text) && !isDouyinUiNoiseText(text))
+    .sort((a, b) => scoreDouyinTitle(b) - scoreDouyinTitle(a))[0] || '';
+}
+
+function isDouyinNoiseText(text) {
+  return /算法推荐专项举报|sfjubao|bytedance|举报|反馈|登录|关注|粉丝|获赞|私信|搜索|扫一扫/.test(text) ||
+    /^[\d\s.,万wW]+$/.test(text);
+}
+
+function isDouyinUiNoiseText(text) {
+  return /算法推荐专项举报|抖音视频|sfjubao|bytedance|举报|反馈|登录|关注|粉丝|获赞|私信|搜索|扫一扫|评论|分享|收藏|合集|推荐/.test(text);
+}
+
+function scoreDouyinTitle(text) {
+  let score = 0;
+  if (/[\u4e00-\u9fa5]/.test(text)) score += 4;
+  if (text.length >= 6 && text.length <= 48) score += 3;
+  if (/[#@]/.test(text)) score += 1;
+  if (/算法|举报|bytedance|sfjubao/.test(text)) score -= 10;
+  return score;
 }
 
 function getDouyinCardContainer(el) {
@@ -515,6 +700,10 @@ function getVisibleNoteCards(collectionMode) {
     .filter(link => isVisible(link))
     .filter(link => isLikelyCollectionLink(link, collectionMode));
 
+  if (collectionMode.profileFavoritePage) {
+    return [...new Set(noteLinks.map(link => getCardFromLink(link)))].filter(Boolean);
+  }
+
   const dataCards = Array.from(document.querySelectorAll('[data-note-id], [data-id]'))
     .filter(card => isVisible(card))
     .filter(card => isBelowCollectionTab(card, collectionMode));
@@ -603,12 +792,12 @@ function isLikelyCollectionLink(link, collectionMode) {
     return true;
   }
 
-  if (collectionMode.sourceLinksOnly) {
-    return hasCollectionSource;
+  if (collectionMode.profileFavoritePage) {
+    return false;
   }
 
-  if (collectionMode.profileFavoritePage && !collectionMode.activeCollectionTab) {
-    return false;
+  if (collectionMode.sourceLinksOnly) {
+    return hasCollectionSource;
   }
 
   if (collectionMode.isCollectionPage && !collectionMode.activeCollectionTab) {
@@ -827,35 +1016,63 @@ function getExtractionDebug(collections) {
   };
 }
 
-function openCollectionCard(domIndex) {
-  if (typeof domIndex !== 'number') {
-    return false;
+function findCollectionCardByUrl(url) {
+  const noteId = getXhsNoteIdFromUrl(url);
+  if (!noteId) {
+    return null;
   }
 
-  const collectionMode = getCollectionMode();
-  const cards = getVisibleNoteCards(collectionMode);
-  const card = cards[domIndex];
+  const exactLink = Array.from(document.querySelectorAll('a[href]'))
+    .find(link => isVisible(link) && getXhsNoteIdFromUrl(link.href || link.getAttribute('href')) === noteId);
 
+  if (exactLink) {
+    return exactLink;
+  }
+
+  return document.querySelector(`[data-note-id="${CSS.escape(noteId)}"], [data-id="${CSS.escape(noteId)}"]`);
+}
+
+function getXhsNoteIdFromUrl(url) {
+  const match = String(url || '').match(/\/(?:explore|note|discovery\/item)\/([^/?#]+)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+function clickCollectionCard(card) {
   if (!card) {
     return false;
   }
 
-  // Prefer dispatching events on the card element itself to mimic manual click
-  // and avoid triggering native <a> navigation when possible.
+  const collectionMode = getCollectionMode();
+  if (!isBelowCollectionTab(card, collectionMode)) {
+    return false;
+  }
+
   let clickable = card;
   try {
     const candidates = Array.from(card.querySelectorAll('button, [role="button"], [role="link"], a'));
-    // prefer non-anchor elements
     const nonAnchor = candidates.find(el => el.tagName !== 'A');
     if (nonAnchor) clickable = nonAnchor;
   } catch (e) {
     clickable = card;
   }
 
-  // Dispatch events at the element's center coordinates to better mimic a real user click
   dispatchMouseClickAt(clickable);
 
   return true;
+}
+
+function openCollectionCard(domIndex, url) {
+  if (url) {
+    return clickCollectionCard(findCollectionCardByUrl(url));
+  }
+
+  if (typeof domIndex !== 'number') {
+    return false;
+  }
+
+  const collectionMode = getCollectionMode();
+  const cards = getVisibleNoteCards(collectionMode);
+  return clickCollectionCard(cards[domIndex]);
 }
 
 function extractCardInfo(card) {
@@ -938,14 +1155,7 @@ function extractCardInfo(card) {
     item.title = item.excerpt.slice(0, 60);
   }
 
-  const authorElements = card.querySelectorAll('.user-name, .author, .nickname, [class*="user"], [class*="author"]');
-  for (const el of authorElements) {
-    const text = el.textContent.trim();
-    if (text && text.length > 0 && text.length < 50) {
-      item.author = text;
-      break;
-    }
-  }
+  item.author = pickXhsAuthor(card);
 
   const imgElement = card.matches?.('img') ? card : card.querySelector('img');
   if (imgElement) {
@@ -963,8 +1173,8 @@ function extractCardInfo(card) {
   const statsElements = card.querySelectorAll('span, .like, .comment, .collect, [class*="like"], [class*="comment"], [class*="collect"], [class*="count"]');
   statsElements.forEach(el => {
     const text = el.textContent.trim();
-    const num = parseInt(text.replace(/[^0-9]/g, ''));
-    if (!isNaN(num) && num > 0) {
+    const num = parseCompactCount(text);
+    if (num && num > 0) {
       const classList = el.className.toLowerCase();
       if (classList.includes('like') || classList.includes('thumb') || classList.includes('heart')) {
         item.stats.likes = num;
@@ -977,6 +1187,54 @@ function extractCardInfo(card) {
   });
 
   return item;
+}
+
+function pickXhsAuthor(card) {
+  const candidates = [];
+  const selectors = [
+    '.user-name',
+    '.nickname',
+    '.author',
+    '[class*="user-name"]',
+    '[class*="nickname"]',
+    '[class*="author"]',
+    'a[href*="/user/profile/"]'
+  ];
+
+  card.querySelectorAll(selectors.join(',')).forEach(el => {
+    ['title', 'aria-label'].forEach(attr => {
+      const value = cleanXhsAuthorText(el.getAttribute(attr));
+      if (isLikelyXhsAuthor(value)) candidates.push(value);
+    });
+
+    const directText = Array.from(el.childNodes || [])
+      .filter(node => node.nodeType === Node.TEXT_NODE)
+      .map(node => node.textContent)
+      .join(' ');
+    const directValue = cleanXhsAuthorText(directText);
+    if (isLikelyXhsAuthor(directValue)) candidates.push(directValue);
+
+    const fullValue = cleanXhsAuthorText(el.textContent);
+    if (isLikelyXhsAuthor(fullValue)) candidates.push(fullValue);
+  });
+
+  return candidates
+    .sort((a, b) => a.length - b.length)[0] || null;
+}
+
+function cleanXhsAuthorText(text) {
+  return String(text || '')
+    .replace(/\s+/g, ' ')
+    .replace(/[👍♥❤]\s*[\d,.万wW]+/g, '')
+    .trim();
+}
+
+function isLikelyXhsAuthor(text) {
+  if (!text) return false;
+  if (text.length > 24) return false;
+  if (/[\d,.万wW]\s*$/.test(text)) return false;
+  if (/赞|点赞|评论|收藏|分享|关注|粉丝|获赞|like|comment|collect/i.test(text)) return false;
+  return true;
 }
 
 function detectMediaType(card, text) {

@@ -5,6 +5,7 @@ let manageMode = false;
 
 const THEME_STORAGE_KEY = 'memora_theme';
 const AVAILABLE_THEMES = ['douyin', 'redbook', 'bilibili'];
+const XHS_LAST_COLLECTION_PAGES_KEY = 'xhs_last_collection_pages';
 
 const AI_CONFIG = window.SMART_COLLECTIONS_AI_CONFIG || {};
 const DEFAULT_TAG = '其他';
@@ -516,12 +517,85 @@ function escapeHtml(text) {
   });
 }
 
+function getXhsNoteIdFromUrl(url) {
+  const match = String(url || '').match(/\/(?:explore|note|discovery\/item)\/([^/?#]+)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+function isXhsNoteDetailUrl(url) {
+  return Boolean(getXhsNoteIdFromUrl(url));
+}
+
+function normalizeXhsCollectionNoteUrl(url) {
+  const value = String(url || '');
+  if (!value.includes('xiaohongshu.com') || !getXhsNoteIdFromUrl(value)) {
+    return value;
+  }
+
+  let normalized = value.replace(/([?&]xsec_token=)([^&#]*)/i, (match, prefix, token) => {
+    try {
+      return `${prefix}${decodeURIComponent(token)}`;
+    } catch (error) {
+      return match;
+    }
+  });
+
+  if (!/[?&]xsec_source=/i.test(normalized)) {
+    normalized += `${normalized.includes('?') ? '&' : '?'}xsec_source=pc_collect`;
+  }
+
+  return normalized;
+}
+
+function hasXhsXsecToken(url) {
+  try {
+    return new URL(url).searchParams.has('xsec_token');
+  } catch (error) {
+    return false;
+  }
+}
+
+function hasXhsCollectSource(url) {
+  return /[?&]xsec_source=pc_collect\b/i.test(String(url || ''));
+}
+
+function isXhsCollectionPageUrl(url) {
+  const value = String(url || '');
+  if (!value.includes('xiaohongshu.com')) return false;
+  if (/\/favorites\b|\/collection\b|\/collect\b/i.test(value)) return true;
+
+  try {
+    const parsed = new URL(value);
+    return /\/user\/profile\//i.test(parsed.pathname) && parsed.searchParams.get('tab') === 'fav';
+  } catch (error) {
+    return false;
+  }
+}
+
+async function rememberXhsCollectionPage(tab) {
+  if (!tab?.id || !isXhsCollectionPageUrl(tab.url)) return;
+
+  const result = await chrome.storage.local.get(XHS_LAST_COLLECTION_PAGES_KEY);
+  const pages = result[XHS_LAST_COLLECTION_PAGES_KEY] || {};
+  pages[String(tab.id)] = tab.url;
+  await chrome.storage.local.set({ [XHS_LAST_COLLECTION_PAGES_KEY]: pages });
+}
+
+async function getRememberedXhsCollectionPage(tabId) {
+  const result = await chrome.storage.local.get(XHS_LAST_COLLECTION_PAGES_KEY);
+  return result[XHS_LAST_COLLECTION_PAGES_KEY]?.[String(tabId)] || '';
+}
+
 async function openCollection(url, domIndex) {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const normalizedUrl = typeof url === 'string' && url.includes('xiaohongshu.com')
+    ? normalizeXhsCollectionNoteUrl(url)
+    : url;
+
   // If the item is a Douyin link, open it directly in a new tab.
-  if (typeof url === 'string' && url.includes('douyin.com')) {
+  if (typeof normalizedUrl === 'string' && normalizedUrl.includes('douyin.com')) {
     try {
-      await chrome.tabs.create({ url });
+      await chrome.tabs.create({ url: normalizedUrl });
       return;
     } catch (err) {
       console.warn('open douyin url failed:', err);
@@ -533,14 +607,21 @@ async function openCollection(url, domIndex) {
 
   if (isXhs) {
     try {
+      await rememberXhsCollectionPage(tab);
+
+      if (normalizedUrl && getXhsNoteIdFromUrl(normalizedUrl)) {
+        await chrome.tabs.create({ url: normalizedUrl, active: true });
+        return;
+      }
+
       if (Number.isInteger(domIndex)) {
-        const response = await chrome.tabs.sendMessage(tab.id, { action: 'openCollectionCard', domIndex });
+        const response = await chrome.tabs.sendMessage(tab.id, { action: 'openCollectionCard', domIndex, url: normalizedUrl });
         if (response?.success) return;
       }
 
-      if (url) {
+      if (normalizedUrl) {
         // try to ask content script to find and click matching link in page
-        const response = await chrome.tabs.sendMessage(tab.id, { action: 'openCollectionUrl', url });
+        const response = await chrome.tabs.sendMessage(tab.id, { action: 'openCollectionUrl', url: normalizedUrl });
         if (response?.success) return;
       }
     } catch (err) {
@@ -557,6 +638,35 @@ function getCollectionKey(item) {
   return item?.id || item?.url || '';
 }
 
+function getItemPlatform(item) {
+  const value = `${item?.platform || ''} ${item?.url || ''}`.toLowerCase();
+  if (value.includes('douyin.com') || value.includes('抖音') || value.includes('鎶栭煶')) {
+    return 'douyin';
+  }
+  if (value.includes('xiaohongshu.com') || value.includes('小红书') || value.includes('灏忕孩涔')) {
+    return 'xhs';
+  }
+  return '';
+}
+
+function getTabPlatform(tabUrl) {
+  const value = String(tabUrl || '').toLowerCase();
+  if (value.includes('douyin.com')) return 'douyin';
+  if (value.includes('xiaohongshu.com')) return 'xhs';
+  return '';
+}
+
+function resetCollectionsForPlatformIfNeeded(nextPlatform) {
+  if (!nextPlatform || collections.length === 0) {
+    return;
+  }
+
+  const currentPlatform = getItemPlatform(collections[0]);
+  if (currentPlatform && currentPlatform !== nextPlatform) {
+    collections = [];
+  }
+}
+
 function mergeExtractedCollections(extractedItems) {
   const existingIndexByKey = new Map();
   collections.forEach((item, index) => {
@@ -567,6 +677,13 @@ function mergeExtractedCollections(extractedItems) {
   const appendedItems = [];
 
   extractedItems.forEach(item => {
+    if (typeof item.url === 'string' && item.url.includes('xiaohongshu.com')) {
+      item = {
+        ...item,
+        url: normalizeXhsCollectionNoteUrl(item.url)
+      };
+    }
+
     const key = getCollectionKey(item);
     if (!key) return;
 
@@ -613,6 +730,8 @@ async function extractCollections() {
     const response = await chrome.tabs.sendMessage(tab.id, { action: 'extractCollections' });
     
     if (response && response.success && response.data.length > 0) {
+      const nextPlatform = getItemPlatform(response.data[0]) || getTabPlatform(tab.url);
+      resetCollectionsForPlatformIfNeeded(nextPlatform);
       const appendedItems = mergeExtractedCollections(response.data);
 
       await chrome.storage.local.set({ xhs_collections: collections });
