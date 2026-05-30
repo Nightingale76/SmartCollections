@@ -3,6 +3,9 @@ let searchTerm = '';
 let selectedTag = '';
 let manageMode = false;
 
+const THEME_STORAGE_KEY = 'memora_theme';
+const AVAILABLE_THEMES = ['douyin', 'redbook', 'bilibili'];
+
 const AI_CONFIG = window.SMART_COLLECTIONS_AI_CONFIG || {};
 const DEFAULT_TAG = '其他';
 
@@ -259,6 +262,51 @@ async function loadCollections() {
   await chrome.storage.local.set({ xhs_collections: collections });
   renderCollections();
   updateTagFilter();
+}
+
+function applyTheme(theme) {
+  const selectedTheme = AVAILABLE_THEMES.includes(theme) ? theme : 'douyin';
+  document.body.classList.remove('theme-redbook', 'theme-bilibili');
+
+  if (selectedTheme !== 'douyin') {
+    document.body.classList.add(`theme-${selectedTheme}`);
+  }
+
+  document.querySelectorAll('[data-theme]').forEach(button => {
+    button.classList.toggle('active', button.dataset.theme === selectedTheme);
+  });
+}
+
+async function initThemeSwitcher() {
+  const themeToggleBtn = document.getElementById('themeToggleBtn');
+  const themeMenu = document.getElementById('themeMenu');
+  if (!themeToggleBtn || !themeMenu) return;
+
+  const result = await chrome.storage.local.get(THEME_STORAGE_KEY);
+  applyTheme(result[THEME_STORAGE_KEY] || 'douyin');
+
+  themeToggleBtn.addEventListener('click', (event) => {
+    event.stopPropagation();
+    const isOpen = themeMenu.hidden;
+    themeMenu.hidden = !isOpen;
+    themeToggleBtn.setAttribute('aria-expanded', String(isOpen));
+  });
+
+  themeMenu.addEventListener('click', async (event) => {
+    const option = event.target.closest('[data-theme]');
+    if (!option) return;
+
+    const theme = option.dataset.theme;
+    applyTheme(theme);
+    themeMenu.hidden = true;
+    themeToggleBtn.setAttribute('aria-expanded', 'false');
+    await chrome.storage.local.set({ [THEME_STORAGE_KEY]: theme });
+  });
+
+  document.addEventListener('click', () => {
+    themeMenu.hidden = true;
+    themeToggleBtn.setAttribute('aria-expanded', 'false');
+  });
 }
 
 function updateTagFilter() {
@@ -622,6 +670,7 @@ async function removeCollection(id) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  initThemeSwitcher();
   loadCollections();
   
   document.getElementById('extractBtn').addEventListener('click', extractCollections);
