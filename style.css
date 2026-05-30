@@ -4,12 +4,21 @@
   box-sizing: border-box;
 }
 
+html {
+  width: 420px;
+  height: 560px;
+  background: #0b0d14;
+  overflow: hidden;
+}
+
 body {
   width: 420px;
-  max-height: 620px;
+  height: 560px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-  background: #0f111a;
+  padding: 2px;
+  background: linear-gradient(135deg, #ff4f7a, #7c3aed 52%, #00c2c2);
   color: #f5f5f5;
+  overflow: hidden;
 }
 
 .popup-container {
@@ -17,13 +26,21 @@ body {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  width: 100%;
+  height: 100%;
   background:
     radial-gradient(circle at top right, rgba(254, 44, 85, 0.28), transparent 35%),
     radial-gradient(circle at bottom left, rgba(254, 44, 85, 0.12), transparent 35%),
     linear-gradient(180deg, #121421 0%, #0b0d14 100%);
+  border: 1px solid rgba(255,255,255,0.14);
+  overflow: hidden;
+  box-shadow:
+    inset 0 0 0 1px rgba(254,44,85,0.16),
+    0 18px 45px rgba(0,0,0,0.35);
 }
 
 .header {
+  flex-shrink: 0;
   text-align: center;
   padding-bottom: 12px;
   border-bottom: 1px solid rgba(255,255,255,0.08);
@@ -45,6 +62,7 @@ body {
 }
 
 .search-section {
+  flex-shrink: 0;
   display: flex;
   gap: 8px;
 }
@@ -86,6 +104,7 @@ body {
 }
 
 .actions {
+  flex-shrink: 0;
   display: flex;
   gap: 10px;
 }
@@ -100,16 +119,26 @@ body {
   color: #fff;
   cursor: pointer;
   transition: 0.2s;
+  text-shadow:
+    0 1px 1px rgba(0,0,0,0.35),
+    0 2px 6px rgba(0,0,0,0.22);
+  box-shadow:
+    inset 0 -10px 18px rgba(0,0,0,0.12),
+    0 8px 20px rgba(0,0,0,0.24);
 }
 
 #extractBtn {
-  background: linear-gradient(135deg, #fe2c55, #ff5c7a);
-  box-shadow: 0 8px 20px rgba(254, 44, 85, 0.28);
+  background: linear-gradient(135deg, #ff7a91 0%, #fe2c55 48%, #d41445 100%);
+  box-shadow:
+    inset 0 -10px 18px rgba(116,0,31,0.2),
+    0 10px 22px rgba(254, 44, 85, 0.32);
 }
 
 #exportBtn {
-  background: linear-gradient(135deg, #ff9aa8, #fe2c55);
-  box-shadow: 0 8px 20px rgba(254, 44, 85, 0.22);
+  background: linear-gradient(135deg, #35d9d4 0%, #00aeb8 48%, #087983 100%);
+  box-shadow:
+    inset 0 -10px 18px rgba(0,71,78,0.2),
+    0 10px 22px rgba(0, 194, 194, 0.26);
 }
 
 .actions button:hover {
@@ -124,18 +153,23 @@ body {
 }
 
 #manageBtn {
-  background: linear-gradient(135deg, #5b21b6 0%, #8b5cf6 100%);
+  background: linear-gradient(135deg, #a275ff 0%, #7c3aed 48%, #5621a3 100%);
   color: white;
+  box-shadow:
+    inset 0 -10px 18px rgba(42,12,92,0.24),
+    0 10px 22px rgba(124, 58, 237, 0.28);
 }
 
 #manageBtn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(91, 33, 182, 0.2);
+  box-shadow:
+    inset 0 -10px 18px rgba(42,12,92,0.22),
+    0 12px 26px rgba(124, 58, 237, 0.34);
 }
 
 .collection-list {
   flex: 1;
-  max-height: 360px;
+  min-height: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -302,6 +336,7 @@ body {
 
 
 .footer {
+  flex-shrink: 0;
   text-align: center;
   padding-top: 8px;
   border-top: 1px solid rgba(255,255,255,0.08);
