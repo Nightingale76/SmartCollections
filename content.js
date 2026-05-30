@@ -188,22 +188,21 @@ async function extractCollectionsFromPage() {
 
 async function extractXhsCollections() {
   const collections = [];
-  const collectionTab = findCollectionTab();
+  bridgeItems.clear();
 
-  if (!isCollectionLikePage() && !collectionTab) {
+  if (!isCollectionLikePage()) {
     return collections;
   }
 
-  if (collectionTab && !isActiveTabLike(collectionTab)) {
-    collectionTab.click();
-    await waitForCollectionCards();
-  } else {
-    await delay(300);
-  }
+  await delay(300);
 
   await waitForBridgeItems();
 
   const collectionMode = getCollectionMode();
+  if (!collectionMode.isCollectionPage) {
+    return collections;
+  }
+
   const collectionCards = getVisibleNoteCards(collectionMode);
 
   collectionCards.forEach(card => {
@@ -354,7 +353,15 @@ function isCollectionLikePage() {
     return true;
   }
 
-  if (/\/user\/profile\//i.test(url) && (findActiveCollectionTab() || findCollectionTab())) {
+  if (isXhsProfilePage()) {
+    return isXhsProfileFavoriteTab();
+  }
+
+  if (findActiveCollectionTab()) {
+    return true;
+  }
+
+  if (hasCollectionSourceLinks()) {
     return true;
   }
 
@@ -364,24 +371,44 @@ function isCollectionLikePage() {
 function getCollectionMode() {
   const url = window.location.href;
   const explicitFavoritesPage = /\/favorites\b|\/collection\b|\/collect\b/i.test(url);
-  const profilePage = /\/user\/profile\//i.test(url);
+  const profileFavoritePage = isXhsProfileFavoriteTab();
   const activeCollectionTab = findActiveCollectionTab();
-  const collectionTab = findCollectionTab();
-  const hasCollectionSourceLinks = document.querySelector('a[href*="/explore/"][href*="collect"], a[href*="/note/"][href*="collect"], a[href*="/explore/"][href*="favorite"], a[href*="/note/"][href*="favorite"]');
+  const collectionSourceLinks = hasCollectionSourceLinks();
 
   return {
     activeCollectionTab,
+    profileFavoritePage,
     sourceLinksOnly: !activeCollectionTab &&
       !explicitFavoritesPage &&
-      !profilePage &&
-      !collectionTab &&
-      Boolean(hasCollectionSourceLinks),
+      !profileFavoritePage &&
+      Boolean(collectionSourceLinks),
     isCollectionPage: explicitFavoritesPage ||
-      profilePage ||
+      profileFavoritePage ||
       Boolean(activeCollectionTab) ||
-      Boolean(collectionTab) ||
-      Boolean(hasCollectionSourceLinks)
+      Boolean(collectionSourceLinks)
   };
+}
+
+function isXhsProfilePage() {
+  return /\/user\/profile\//i.test(window.location.pathname);
+}
+
+function isXhsProfileFavoriteTab() {
+  if (!isXhsProfilePage()) {
+    return false;
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  return params.get('tab') === 'fav';
+}
+
+function hasCollectionSourceLinks() {
+  return Boolean(document.querySelector(
+    'a[href*="/explore/"][href*="collect"], ' +
+    'a[href*="/note/"][href*="collect"], ' +
+    'a[href*="/explore/"][href*="favorite"], ' +
+    'a[href*="/note/"][href*="favorite"]'
+  ));
 }
 
 function findCollectionTab() {
@@ -566,17 +593,22 @@ function isLikelyCollectionLink(link, collectionMode) {
   const href = link.href || link.getAttribute?.('href') || '';
   const hasNotePath = /xiaohongshu\.com/.test(href) &&
     /\/(explore|note|discovery\/item)\//.test(href);
+  const hasCollectionSource = /xsec_source=[^&#]*(collect|favorite|fav)/i.test(href);
 
   if (!hasNotePath) {
     return false;
   }
 
-  if (/xsec_source=[^&#]*(collect|favorite|fav)/i.test(href)) {
+  if (hasCollectionSource) {
     return true;
   }
 
   if (collectionMode.sourceLinksOnly) {
-    return /xsec_source=[^&#]*(collect|favorite|fav)/i.test(href);
+    return hasCollectionSource;
+  }
+
+  if (collectionMode.profileFavoritePage && !collectionMode.activeCollectionTab) {
+    return false;
   }
 
   if (collectionMode.isCollectionPage && !collectionMode.activeCollectionTab) {
@@ -599,7 +631,9 @@ function getCardFromLink(link) {
 
 function isBelowCollectionTab(el, collectionMode) {
   const tab = collectionMode.activeCollectionTab;
-  if (!tab) return true;
+  if (!tab) {
+    return !collectionMode.profileFavoritePage;
+  }
 
   const tabRect = tab.getBoundingClientRect();
   const rect = el.getBoundingClientRect();

@@ -553,6 +553,46 @@ async function openCollection(url, domIndex) {
 }
 
 
+function getCollectionKey(item) {
+  return item?.id || item?.url || '';
+}
+
+function mergeExtractedCollections(extractedItems) {
+  const existingIndexByKey = new Map();
+  collections.forEach((item, index) => {
+    const key = getCollectionKey(item);
+    if (key) existingIndexByKey.set(key, index);
+  });
+
+  const appendedItems = [];
+
+  extractedItems.forEach(item => {
+    const key = getCollectionKey(item);
+    if (!key) return;
+
+    const existingIndex = existingIndexByKey.get(key);
+    if (existingIndex !== undefined) {
+      const existing = collections[existingIndex];
+      collections[existingIndex] = {
+        ...existing,
+        ...item,
+        tags: ensureTags(existing.tags)
+      };
+      return;
+    }
+
+    const nextItem = {
+      ...item,
+      tags: getLocalTagsForItem(item)
+    };
+    existingIndexByKey.set(key, collections.length);
+    collections.push(nextItem);
+    appendedItems.push(nextItem);
+  });
+
+  return appendedItems;
+}
+
 async function extractCollections() {
   const extractBtn = document.getElementById('extractBtn');
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -573,21 +613,14 @@ async function extractCollections() {
     const response = await chrome.tabs.sendMessage(tab.id, { action: 'extractCollections' });
     
     if (response && response.success && response.data.length > 0) {
-      collections = response.data.map(item => {
-        const existing = collections.find(c => c.id === item.id);
-        return {
-          ...existing,
-          ...item,
-          tags: getLocalTagsForItem({ ...existing, ...item })
-        };
-      });
+      const appendedItems = mergeExtractedCollections(response.data);
 
       await chrome.storage.local.set({ xhs_collections: collections });
       renderCollections();
       updateTagFilter();
       showToast(`已提取 ${collections.length} 条，正在后台生成分类…`);
 
-      await applyClassificationTags(collections, {
+      await applyClassificationTags(appendedItems, {
         includeImage: false,
         onItemDone: async () => {
           await chrome.storage.local.set({ xhs_collections: collections });
