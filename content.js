@@ -2,8 +2,10 @@ const BRIDGE_SOURCE = 'xhs-smart-collection';
 const bridgeItems = new Map();
 let bridgeReady = false;
 
-injectPageBridge();
-window.addEventListener('message', handleBridgeMessage, false);
+if (location.hostname.includes('xiaohongshu.com')) {
+  injectPageBridge();
+  window.addEventListener('message', handleBridgeMessage, false);
+}
 
 function injectPageBridge() {
   if (document.documentElement?.dataset?.xhsSmartCollectionBridge === 'true') {
@@ -61,7 +63,9 @@ function mapBridgeItem(rawItem) {
     return null;
   }
 
-  const likes = rawItem.liked_count ? parseInt(String(rawItem.liked_count).replace(/[^0-9]/g, ''), 10) : null;
+  const likes = rawItem.liked_count
+    ? parseInt(String(rawItem.liked_count).replace(/[^0-9]/g, ''), 10)
+    : null;
 
   return {
     id: rawItem.note_id,
@@ -77,6 +81,7 @@ function mapBridgeItem(rawItem) {
       collection: null
     },
     source: rawItem.source || 'bridge',
+    platform: '小红书',
     extractedAt: rawItem.captured_at || new Date().toISOString()
   };
 }
@@ -101,7 +106,11 @@ async function waitForBridgeItems(timeoutMs = 2500) {
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'extractCollections') {
     extractCollectionsFromPage().then(collections => {
-      sendResponse({ success: true, data: collections, debug: getExtractionDebug(collections) });
+      sendResponse({
+        success: true,
+        data: collections,
+        debug: getExtractionDebug(collections)
+      });
     });
     return true;
   }
@@ -113,6 +122,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 async function extractCollectionsFromPage() {
+  if (location.hostname.includes('douyin.com')) {
+    return extractDouyinCollections();
+  }
+
+  return extractXhsCollections();
+}
+
+async function extractXhsCollections() {
   const collections = [];
   const collectionTab = findCollectionTab();
 
@@ -142,6 +159,136 @@ async function extractCollectionsFromPage() {
   bridgeItems.forEach(item => collections.push({ ...item }));
 
   return dedupeCollections(collections);
+}
+
+async function extractDouyinCollections() {
+  await delay(1000);
+
+  const results = [];
+
+  const links = Array.from(document.querySelectorAll('a[href]'))
+    .filter(link => isVisible(link));
+
+  links.forEach((link, index) => {
+    const href = link.href || '';
+
+    if (
+      href.includes('/video/') ||
+      href.includes('/note/') ||
+      href.includes('modal_id=')
+    ) {
+      const card = getDouyinCardContainer(link);
+      const text = cleanCardText(card?.textContent || '');
+      const img = card?.querySelector('img');
+      const video = card?.querySelector('video');
+
+      const id =
+        href.match(/\/video\/([^/?#]+)/)?.[1] ||
+        href.match(/\/note\/([^/?#]+)/)?.[1] ||
+        href.match(/modal_id=([^&#]+)/)?.[1] ||
+        `dom-${index}`;
+
+      const title =
+        pickBestTitle(getCardTextCandidates(card)) ||
+        text.slice(0, 80) ||
+        document.title ||
+        '抖音内容';
+
+      results.push({
+        id: `douyin-${id}`,
+        title,
+        url: href,
+        author: null,
+        cover: img?.currentSrc || img?.src || video?.poster || null,
+        excerpt: text.slice(0, 500),
+        mediaType: 'video',
+        platform: '抖音',
+        stats: {
+          likes: null,
+          comments: null,
+          collection: null
+        },
+        extractedAt: new Date().toISOString()
+      });
+    }
+  });
+
+  if (results.length === 0) {
+    const mediaCards = Array.from(document.querySelectorAll('video, img'))
+      .filter(el => isVisible(el))
+      .map(el => getDouyinCardContainer(el));
+
+    mediaCards.forEach((card, index) => {
+      if (!card) return;
+
+      const text = cleanCardText(card.textContent || '');
+      const link = card.querySelector('a[href]');
+      const img = card.querySelector('img');
+      const video = card.querySelector('video');
+
+      const title =
+        pickBestTitle(getCardTextCandidates(card)) ||
+        text.slice(0, 80) ||
+        document.title ||
+        '抖音内容';
+
+      results.push({
+        id: `douyin-media-${index}-${title.slice(0, 8)}`,
+        title,
+        url: link?.href || window.location.href,
+        author: null,
+        cover: img?.currentSrc || img?.src || video?.poster || null,
+        excerpt: text.slice(0, 500),
+        mediaType: 'video',
+        platform: '抖音',
+        stats: {
+          likes: null,
+          comments: null,
+          collection: null
+        },
+        extractedAt: new Date().toISOString()
+      });
+    });
+  }
+
+  return dedupeCollections(results);
+}
+
+function getDouyinCardContainer(el) {
+  let current = el;
+  let best = el;
+  let bestScore = -999;
+
+  for (let depth = 0; current && depth < 8; depth++) {
+    const rect = current.getBoundingClientRect();
+    const text = cleanCardText(current.textContent);
+    const mediaCount = current.querySelectorAll?.('img, video').length || 0;
+    const linkCount = current.querySelectorAll?.('a[href]').length || 0;
+
+    let score = 0;
+
+    if (rect.width >= 120) score += 2;
+    if (rect.height >= 80) score += 2;
+    if (rect.width <= 680) score += 2;
+    if (rect.height <= 900) score += 2;
+    if (text.length >= 2 && text.length <= 400) score += 4;
+    if (mediaCount >= 1 && mediaCount <= 4) score += 3;
+    if (linkCount >= 1 && linkCount <= 5) score += 2;
+
+    if (rect.width > window.innerWidth * 0.95) score -= 8;
+    if (rect.height > window.innerHeight * 0.95) score -= 8;
+
+    score -= depth * 0.3;
+
+    if (score > bestScore) {
+      bestScore = score;
+      best = current;
+    }
+
+    current = current.parentElement;
+  }
+
+  return best;
 }
 
 function isCollectionLikePage() {
@@ -417,8 +564,11 @@ function normalizeText(text) {
 }
 
 function isVisible(el) {
+  if (!el) return false;
+
   const rect = el.getBoundingClientRect();
   const style = window.getComputedStyle(el);
+
   return rect.width > 0 &&
     rect.height > 0 &&
     style.display !== 'none' &&
@@ -480,6 +630,8 @@ function scoreTitleCandidate(text) {
 }
 
 function getCardTextCandidates(card) {
+  if (!card) return [];
+
   const candidates = [];
   const attrs = ['aria-label', 'title', 'alt'];
 
@@ -523,11 +675,11 @@ function getCardTextCandidates(card) {
 }
 
 function getExtractionDebug(collections) {
-  const collectionTab = findCollectionTab();
-  const activeCollectionTab = findActiveCollectionTab();
-  const visibleExploreLinks = Array.from(document.querySelectorAll('a[href*="/explore/"], a[href*="/note/"]')).filter(link => isVisible(link));
+  const collectionTab = location.hostname.includes('xiaohongshu.com') ? findCollectionTab() : null;
+  const activeCollectionTab = location.hostname.includes('xiaohongshu.com') ? findActiveCollectionTab() : null;
+  const visibleExploreLinks = Array.from(document.querySelectorAll('a[href*="/explore/"], a[href*="/note/"], a[href*="/video/"]')).filter(link => isVisible(link));
   const visibleDataCards = Array.from(document.querySelectorAll('[data-note-id], [data-id]')).filter(card => isVisible(card));
-  const visibleImages = Array.from(document.querySelectorAll('img')).filter(img => isVisible(img) && isLikelyContentImage(img));
+  const visibleImages = Array.from(document.querySelectorAll('img')).filter(img => isVisible(img));
 
   return {
     url: window.location.href,
@@ -539,6 +691,7 @@ function getExtractionDebug(collections) {
     visibleExploreLinks: visibleExploreLinks.length,
     visibleDataCards: visibleDataCards.length,
     visibleImages: visibleImages.length,
+    visibleVideos: document.querySelectorAll('video').length,
     sampleLinks: visibleExploreLinks.slice(0, 3).map(link => link.href)
   };
 }
@@ -582,20 +735,21 @@ function extractCardInfo(card) {
       comments: null,
       collection: null
     },
+    platform: '小红书',
     extractedAt: new Date().toISOString()
   };
-  
+
   const collectionMode = getCollectionMode();
   const domIndex = getVisibleNoteCards(collectionMode).indexOf(card);
   const noteId = card.getAttribute('data-note-id') ||
-                 card.getAttribute('data-id') ||
-                 card.getAttribute('id');
+    card.getAttribute('data-id') ||
+    card.getAttribute('id');
 
   const linkElement = card.matches?.('a[href*="/explore/"], a[href*="/note/"]')
     ? card
     : card.querySelector('a[href*="/explore/"], a[href*="/note/"]') ||
       card.closest('a[href*="/explore/"], a[href*="/note/"]');
-  
+
   if (linkElement) {
     const href = linkElement.href;
     const match = href.match(/\/(?:explore|note|discovery\/item)\/([^/?#]+)/);
@@ -609,13 +763,13 @@ function extractCardInfo(card) {
     item.id = noteId;
     item.url = `https://www.xiaohongshu.com/explore/${noteId}`;
   }
-  
+
   if (!item.id) {
     item.id = `dom-${domIndex >= 0 ? domIndex : Date.now()}`;
   }
 
   item.domIndex = domIndex;
-  
+
   const visibleText = cleanCardText(card.textContent);
   if (visibleText) {
     item.excerpt = visibleText.slice(0, 500);
@@ -631,7 +785,7 @@ function extractCardInfo(card) {
       break;
     }
   }
-  
+
   if (!item.title) {
     const titleAttr = card.getAttribute('title');
     if (titleAttr && titleAttr.length > 0 && titleAttr.length < 200) {
@@ -646,7 +800,7 @@ function extractCardInfo(card) {
   if (!item.title && item.excerpt) {
     item.title = item.excerpt.slice(0, 60);
   }
-  
+
   const authorElements = card.querySelectorAll('.user-name, .author, .nickname, [class*="user"], [class*="author"]');
   for (const el of authorElements) {
     const text = el.textContent.trim();
@@ -655,7 +809,7 @@ function extractCardInfo(card) {
       break;
     }
   }
-  
+
   const imgElement = card.matches?.('img') ? card : card.querySelector('img');
   if (imgElement) {
     let src = imgElement.currentSrc ||
@@ -668,7 +822,7 @@ function extractCardInfo(card) {
       item.cover = src;
     }
   }
-  
+
   const statsElements = card.querySelectorAll('span, .like, .comment, .collect, [class*="like"], [class*="comment"], [class*="collect"], [class*="count"]');
   statsElements.forEach(el => {
     const text = el.textContent.trim();
@@ -684,7 +838,7 @@ function extractCardInfo(card) {
       }
     }
   });
-  
+
   return item;
 }
 
