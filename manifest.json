@@ -1,0 +1,51 @@
+{
+  "manifest_version": 3,
+  "name": "xhs-smart-companion",
+  "version": "2.2.0",
+  "description": "多平台智能收藏夹助手 - 支持小红书和抖音，含桌面宠物",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "sidePanel"
+  ],
+  "host_permissions": [
+    "https://www.xiaohongshu.com/*",
+    "https://www.douyin.com/*"
+  ],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "Smart Companion"
+  },
+  "side_panel": {
+    "default_path": "sidepanel/sidepanel.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.xiaohongshu.com/*", "https://www.douyin.com/*"],
+      "js": [
+        "shared/constants.js",
+        "platforms/douyin.js",
+        "content/router.js",
+        "content/content.js"
+      ],
+      "css": [
+        "content/floating-pet.css"
+      ],
+      "run_at": "document_end"
+    }
+  ],
+  "background": {
+    "service_worker": "shared/background.js"
+  },
+  "icons": {
+    "16": "assets/icon16.png",
+    "48": "assets/icon48.png",
+    "128": "assets/icon128.png"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["platforms/*", "shared/*", "content/*"],
+      "matches": ["https://www.xiaohongshu.com/*", "https://www.douyin.com/*"]
+    }
+  ]
+}
