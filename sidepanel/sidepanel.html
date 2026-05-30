@@ -31,16 +31,13 @@
           <span class="nav-icon">📊</span>
           <span class="nav-text">统计数据</span>
         </button>
+        <button class="nav-item" data-view="settings">
+          <span class="nav-icon">⚙️</span>
+          <span class="nav-text">设置</span>
+        </button>
       </nav>
 
       <div class="sidebar-footer">
-        <div class="pet-status-card glass-card">
-          <div class="pet-avatar">🐱</div>
-          <div class="pet-info">
-            <span class="pet-name">小 X</span>
-            <span class="pet-mood" id="petMood">心情愉悦</span>
-          </div>
-        </div>
         <div class="quick-actions">
           <button id="exportAllBtn" class="quick-btn">
             <span>📤</span> 导出全部
@@ -105,6 +102,46 @@
           <div class="tag-cloud glass-card">
             <h3>标签分布</h3>
             <div class="cloud-content" id="tagCloud"></div>
+          </div>
+        </div>
+
+        <div class="settings-view" id="settingsView" style="display: none;">
+          <div class="settings-section glass-card">
+            <h3 class="section-title">宠物设置</h3>
+            <div class="setting-item">
+              <label class="setting-label">宠物名字</label>
+              <input type="text" id="petNameInput" class="setting-input" placeholder="小助手">
+            </div>
+            <div class="setting-item">
+              <label class="setting-label">陪伴模式</label>
+              <div class="mode-buttons">
+                <button class="mode-btn" data-mode="quiet">
+                  <span>🤫</span> 安静
+                </button>
+                <button class="mode-btn" data-mode="companion">
+                  <span>🤗</span> 陪伴
+                </button>
+                <button class="mode-btn" data-mode="active">
+                  <span>🎉</span> 活跃
+                </button>
+              </div>
+            </div>
+            <div class="setting-item">
+              <button id="resetPositionBtn" class="reset-btn">
+                <span>🔄</span> 重置宠物位置
+              </button>
+            </div>
+          </div>
+
+          <div class="settings-section glass-card">
+            <h3 class="section-title">AI 设置</h3>
+            <div class="setting-item">
+              <label class="setting-label">当前模型</label>
+              <div class="model-info">
+                <span class="model-name" id="modelName">qwen-plus</span>
+                <span class="model-provider">阿里云百炼</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>

@@ -57,36 +57,15 @@
       selectedTag = e.target.value;
       renderCollections();
     });
-
-    document.querySelectorAll('.mode-btn').forEach(btn => {
-      btn.addEventListener('click', () => switchMode(btn.dataset.mode));
-    });
   }
 
   function updateUI() {
-    document.querySelectorAll('.mode-btn').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.mode === settings.petMode);
-    });
-
     const modeText = {
       [PET_MODES.QUIET]: '安静模式',
       [PET_MODES.COMPANION]: '陪伴模式',
       [PET_MODES.ACTIVE]: '活跃模式'
     };
     document.querySelector('.mode-text').textContent = modeText[settings.petMode] || '陪伴模式';
-  }
-
-  async function switchMode(mode) {
-    settings.petMode = mode;
-    try {
-      await chrome.storage.local.set({ [STORAGE_KEYS.SETTINGS]: settings });
-    } catch (e) {}
-    updateUI();
-
-    chrome.runtime.sendMessage({
-      action: 'update_pet_state',
-      petMode: mode
-    });
   }
 
   async function extractCollections() {

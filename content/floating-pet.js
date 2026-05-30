@@ -42,6 +42,9 @@
     this.isPanelOpen = false;
     this.element = null;
     this.messageTimeout = null;
+    this.petSettings = { petName: '小助手', petPosition: null };
+    this.isDragging = false;
+    this.dragOffset = { x: 0, y: 0 };
 
     console.log('[pet] FloatingPet constructor called');
     this.init();
@@ -83,7 +86,7 @@
   FloatingPet.prototype.loadState = async function() {
     try {
       console.log('[pet] Loading pet state from storage...');
-      const result = await chrome.storage.local.get(['xhs_settings', 'xhs_pet_state']);
+      const result = await chrome.storage.local.get(['xhs_settings', 'xhs_pet_state', 'xhs_pet_settings']);
 
       if (result.xhs_settings) {
         this.mode = result.xhs_settings.petMode || PET_MODES.COMPANION;
@@ -93,6 +96,14 @@
       if (result.xhs_pet_state) {
         this.state = result.xhs_pet_state.state || PET_STATES.IDLE;
         console.log('[pet] Loaded state:', this.state);
+      }
+
+      if (result.xhs_pet_settings) {
+        this.petSettings = {
+          petName: result.xhs_pet_settings.petName || '小助手',
+          petPosition: result.xhs_pet_settings.petPosition || null
+        };
+        console.log('[pet] Loaded pet settings:', this.petSettings);
       }
     } catch (e) {
       console.log('[pet] Failed to load state:', e);
@@ -104,6 +115,14 @@
 
     this.element = document.createElement('div');
     this.element.id = 'floating-pet';
+
+    // 应用自定义位置
+    if (this.petSettings.petPosition) {
+      this.element.style.right = 'auto';
+      this.element.style.bottom = 'auto';
+      this.element.style.left = this.petSettings.petPosition.x + 'px';
+      this.element.style.top = this.petSettings.petPosition.y + 'px';
+    }
 
     const platformIcon = this.platform === PLATFORMS.DOUYIN ? '🎵' : '✨';
     const platformName = this.platform === PLATFORMS.DOUYIN ? '抖音' : '小红书';
@@ -159,7 +178,67 @@
     const sidepanelBtn = this.element.querySelector('.sidepanel-btn');
     const closeBtn = this.element.querySelector('.close-pet-btn');
 
+    // 拖拽事件处理
+    let hasMoved = false;
+    
+    petBody.addEventListener('mousedown', function(e) {
+      console.log('[pet] Drag start');
+      self.isDragging = true;
+      hasMoved = false;
+      
+      const rect = self.element.getBoundingClientRect();
+      self.dragOffset = {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top
+      };
+      
+      petBody.classList.add('dragging');
+      
+      e.preventDefault();
+      e.stopPropagation();
+    });
+
+    document.addEventListener('mousemove', function(e) {
+      if (!self.isDragging) return;
+      
+      hasMoved = true;
+      console.log('[pet] Dragging...');
+      
+      const newX = e.clientX - self.dragOffset.x;
+      const newY = e.clientY - self.dragOffset.y;
+      
+      self.element.style.right = 'auto';
+      self.element.style.bottom = 'auto';
+      self.element.style.left = newX + 'px';
+      self.element.style.top = newY + 'px';
+      
+      e.preventDefault();
+    });
+
+    document.addEventListener('mouseup', function(e) {
+      if (!self.isDragging) return;
+      
+      console.log('[pet] Drag end');
+      self.isDragging = false;
+      petBody.classList.remove('dragging');
+      
+      if (hasMoved) {
+        const rect = self.element.getBoundingClientRect();
+        self.petSettings.petPosition = {
+          x: rect.left,
+          y: rect.top
+        };
+        self.savePetSettings();
+      }
+    });
+
+    // 点击事件 - 区分拖拽和点击
     petBody.addEventListener('click', function(e) {
+      if (hasMoved) {
+        hasMoved = false;
+        return;
+      }
+      
       if (!e.target.closest('.mini-panel-content')) {
         console.log('[pet] Pet body clicked, toggling panel');
         self.togglePanel();
@@ -191,6 +270,33 @@
     console.log('[pet] Event listeners set up complete');
   };
 
+  FloatingPet.prototype.savePetSettings = async function() {
+    try {
+      console.log('[pet] Saving pet settings:', this.petSettings);
+      await chrome.storage.local.set({ xhs_pet_settings: this.petSettings });
+    } catch (e) {
+      console.error('[pet] Failed to save pet settings:', e);
+    }
+  };
+
+  FloatingPet.prototype.updatePetName = function(newName) {
+    this.petSettings.petName = newName;
+    const nameElement = this.element.querySelector('.pet-name');
+    if (nameElement) {
+      nameElement.textContent = newName;
+    }
+    this.savePetSettings();
+  };
+
+  FloatingPet.prototype.resetPosition = function() {
+    this.petSettings.petPosition = null;
+    this.element.style.right = '20px';
+    this.element.style.bottom = '80px';
+    this.element.style.left = 'auto';
+    this.element.style.top = 'auto';
+    this.savePetSettings();
+  };
+
   FloatingPet.prototype.setupMessageListener = function() {
     console.log('[pet] Setting up message listeners...');
 
@@ -205,7 +311,15 @@
 
     chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
       console.log('[pet] Received chrome message:', request);
-      self.handleExtensionMessage(request);
+      
+      if (request.action === 'update_pet_name') {
+        self.updatePetName(request.petName);
+      } else if (request.action === 'reset_pet_position') {
+        self.resetPosition();
+      } else {
+        self.handleExtensionMessage(request);
+      }
+      
       sendResponse({ received: true });
       return true;
     });

@@ -3,6 +3,7 @@
 
   let collections = [];
   let settings = {};
+  let petSettings = {};
   let currentView = 'all';
   let searchTerm = '';
   let selectedTag = '';
@@ -10,12 +11,15 @@
 
   const STORAGE_KEYS = window.XHS_CONSTANTS ? window.XHS_CONSTANTS.STORAGE_KEYS : {
     COLLECTIONS: 'xhs_collections',
-    SETTINGS: 'xhs_settings'
+    SETTINGS: 'xhs_settings',
+    PET_SETTINGS: 'xhs_pet_settings'
   };
   const DEFAULT_SETTINGS = { petMode: 'companion' };
+  const DEFAULT_PET_SETTINGS = { petName: '小助手', petPosition: null };
 
   document.addEventListener('DOMContentLoaded', async () => {
     await loadSettings();
+    await loadPetSettings();
     await loadCollections();
     initEventListeners();
     updateUI();
@@ -27,6 +31,31 @@
       settings = result[STORAGE_KEYS.SETTINGS] || { ...DEFAULT_SETTINGS };
     } catch (e) {
       settings = { ...DEFAULT_SETTINGS };
+    }
+  }
+
+  async function loadPetSettings() {
+    try {
+      const result = await chrome.storage.local.get([STORAGE_KEYS.PET_SETTINGS]);
+      petSettings = result[STORAGE_KEYS.PET_SETTINGS] || { ...DEFAULT_PET_SETTINGS };
+    } catch (e) {
+      petSettings = { ...DEFAULT_PET_SETTINGS };
+    }
+  }
+
+  async function saveSettings() {
+    try {
+      await chrome.storage.local.set({ [STORAGE_KEYS.SETTINGS]: settings });
+    } catch (e) {
+      console.error('Failed to save settings:', e);
+    }
+  }
+
+  async function savePetSettings() {
+    try {
+      await chrome.storage.local.set({ [STORAGE_KEYS.PET_SETTINGS]: petSettings });
+    } catch (e) {
+      console.error('Failed to save pet settings:', e);
     }
   }
 
@@ -64,17 +93,68 @@
 
     document.getElementById('exportAllBtn').addEventListener('click', exportAll);
     document.getElementById('clearAllBtn').addEventListener('click', clearAll);
+
+    // 设置页面事件
+    const petNameInput = document.getElementById('petNameInput');
+    if (petNameInput) {
+      petNameInput.addEventListener('input', async (e) => {
+        const newName = e.target.value || '小助手';
+        petSettings.petName = newName;
+        await savePetSettings();
+        await sendMessageToContent({ action: 'update_pet_name', petName: newName });
+      });
+    }
+
+    const resetPositionBtn = document.getElementById('resetPositionBtn');
+    if (resetPositionBtn) {
+      resetPositionBtn.addEventListener('click', async () => {
+        petSettings.petPosition = null;
+        await savePetSettings();
+        await sendMessageToContent({ action: 'reset_pet_position' });
+        showToast('宠物位置已重置');
+      });
+    }
+
+    document.querySelectorAll('.settings-section .mode-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const mode = btn.dataset.mode;
+        settings.petMode = mode;
+        await saveSettings();
+        updateSettingsUI();
+      });
+    });
   }
 
   function updateUI() {
-    const PET_MODES = { QUIET: 'quiet', COMPANION: 'companion', ACTIVE: 'active' };
-    const moodText = {
-      [PET_MODES.QUIET]: '安静待机',
-      [PET_MODES.COMPANION]: '心情愉悦',
-      [PET_MODES.ACTIVE]: '活力满满'
-    };
-    document.getElementById('petMood').textContent = moodText[settings.petMode] || '心情愉悦';
     document.getElementById('allBadge').textContent = collections.length;
+    updateSettingsUI();
+  }
+
+  function updateSettingsUI() {
+    const petNameInput = document.getElementById('petNameInput');
+    if (petNameInput && petSettings.petName) {
+      petNameInput.value = petSettings.petName === '小助手' ? '' : petSettings.petName;
+    }
+
+    const modeNameEl = document.getElementById('modelName');
+    if (modeNameEl && window.SMART_COLLECTIONS_AI_CONFIG) {
+      modeNameEl.textContent = window.SMART_COLLECTIONS_AI_CONFIG.model || 'qwen-plus';
+    }
+
+    document.querySelectorAll('.settings-section .mode-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.mode === settings.petMode);
+    });
+  }
+
+  async function sendMessageToContent(message) {
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tab && tab.id) {
+        await chrome.tabs.sendMessage(tab.id, message);
+      }
+    } catch (e) {
+      console.log('No content script available:', e);
+    }
   }
 
   function switchView(view) {
@@ -87,16 +167,29 @@
     const emptyState = document.getElementById('emptyState');
     const collectionGrid = document.getElementById('collectionGrid');
     const statsView = document.getElementById('statsView');
+    const settingsView = document.getElementById('settingsView');
+    const contentHeader = document.querySelector('.content-header');
 
     if (view === 'stats') {
+      contentHeader.style.display = 'flex';
       emptyState.style.display = 'none';
       collectionGrid.style.display = 'none';
       statsView.style.display = 'block';
+      settingsView.style.display = 'none';
       updateStats();
+    } else if (view === 'settings') {
+      contentHeader.style.display = 'none';
+      emptyState.style.display = 'none';
+      collectionGrid.style.display = 'none';
+      statsView.style.display = 'none';
+      settingsView.style.display = 'block';
+      updateSettingsUI();
     } else {
+      contentHeader.style.display = 'flex';
       emptyState.style.display = 'none';
       collectionGrid.style.display = 'grid';
       statsView.style.display = 'none';
+      settingsView.style.display = 'none';
       renderCollections();
     }
   }

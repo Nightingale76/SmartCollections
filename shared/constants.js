@@ -4,7 +4,8 @@
   const STORAGE_KEYS = {
     COLLECTIONS: 'xhs_collections',
     SETTINGS: 'xhs_settings',
-    PET_STATE: 'xhs_pet_state'
+    PET_STATE: 'xhs_pet_state',
+    PET_SETTINGS: 'xhs_pet_settings'
   };
 
   const PET_MODES = {
@@ -23,6 +24,11 @@
     petMode: PET_MODES.COMPANION,
     autoSuggest: true,
     showStats: true
+  };
+
+  const DEFAULT_PET_SETTINGS = {
+    petName: '小助手',
+    petPosition: null
   };
 
   const TAG_RULES = [
@@ -71,6 +77,7 @@
     PET_MODES,
     PET_STATES,
     DEFAULT_SETTINGS,
+    DEFAULT_PET_SETTINGS,
     TAG_RULES,
     PET_RESPONSES,
     PET_SUGGESTIONS
