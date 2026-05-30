@@ -63,7 +63,8 @@ body {
   gap: 8px;
 }
 
-.actions button {
+.actions button,
+.api-settings button {
   flex: 1;
   padding: 10px;
   border: none;
@@ -104,6 +105,19 @@ body {
   box-shadow: 0 2px 8px rgba(42, 157, 143, 0.3);
 }
 
+.api-settings {
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid #ffccd5;
+  border-radius: 8px;
+  padding: 8px;
+}
+
+#generateAiTagsBtn {
+  width: 100%;
+  background: linear-gradient(135deg, #6d597a 0%, #b56576 100%);
+  color: white;
+}
+
 .collection-list {
   flex: 1;
   max-height: 350px;
@@ -142,6 +156,13 @@ body {
   display: flex;
   gap: 10px;
   position: relative;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.collection-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 179, 193, 0.32);
 }
 
 .collection-item .cover {
