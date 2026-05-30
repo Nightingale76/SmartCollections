@@ -363,9 +363,10 @@ async function openCollection(url, domIndex) {
 async function extractCollections() {
   const extractBtn = document.getElementById('extractBtn');
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  
-  if (!tab.url.includes('xiaohongshu.com')) {
-    showToast('请在小红书页面使用');
+
+  const supportedSites = ['xiaohongshu.com', 'douyin.com'];
+  if (!supportedSites.some(site => tab.url.includes(site))) {
+    showToast('请在支持的平台页面使用');
     return;
   }
 
