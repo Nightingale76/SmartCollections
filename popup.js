@@ -1,6 +1,7 @@
 let collections = [];
 let searchTerm = '';
 let selectedTag = '';
+let manageMode = false;
 
 const AI_CONFIG = window.SMART_COLLECTIONS_AI_CONFIG || {};
 const DEFAULT_TAG = '其他';
@@ -306,8 +307,19 @@ function renderCollections() {
     return;
   }
   
-  list.innerHTML = filtered.map(item => `
-    <div class="collection-item" data-id="${escapeHtml(item.id)}" data-url="${escapeHtml(item.url || '')}" data-dom-index="${Number.isInteger(item.domIndex) ? item.domIndex : ''}" title="${item.url ? 'Open original' : ''}">
+  list.innerHTML = filtered.map(item => {
+    const tagsHtml = ensureTags(item.tags).map(tag => {
+      if (manageMode) {
+        return `<span class="tag" data-item-id="${escapeHtml(item.id)}" data-tag="${escapeHtml(tag)}"><span class="tag-text">#${escapeHtml(tag)}</span><button class="tag-remove" data-item-id="${escapeHtml(item.id)}" data-tag="${escapeHtml(tag)}">×</button></span>`;
+      }
+
+      return `<span class="tag">#${escapeHtml(tag)}</span>`;
+    }).join('');
+
+    const addBtn = manageMode ? `<button class="tag-add" data-item-id="${escapeHtml(item.id)}">+</button>` : '';
+
+    return `
+    <div class="collection-item ${manageMode ? 'manage-mode' : ''}" data-id="${escapeHtml(item.id)}" data-url="${escapeHtml(item.url || '')}" data-dom-index="${Number.isInteger(item.domIndex) ? item.domIndex : ''}" title="${item.url ? 'Open original' : ''}">
       ${item.cover ? `<img src="${item.cover}" class="cover" alt="封面">` : ''}
       <div class="info">
         <div class="title">${escapeHtml(item.title) || '无标题'}</div>
@@ -320,14 +332,133 @@ function renderCollections() {
           </div>
         ` : ''}
         <div class="tags">
-          ${ensureTags(item.tags).map(tag => `<span class="tag">#${tag}</span>`).join('')}
+          ${tagsHtml}${addBtn}
         </div>
       </div>
       <button class="remove-btn" onclick="removeCollection('${item.id}')">×</button>
     </div>
-  `).join('');
+  `;
+  }).join('');
   
   document.getElementById('itemCount').textContent = `共 ${collections.length} 条收藏`;
+}
+
+async function saveCollectionsAndRender() {
+  await chrome.storage.local.set({ xhs_collections: collections });
+  renderCollections();
+  updateTagFilter();
+}
+
+function removeTagFromItem(itemId, tag) {
+  const idx = collections.findIndex(i => String(i.id) === String(itemId));
+  if (idx === -1) return;
+  const item = collections[idx];
+  item.tags = ensureTags((item.tags || []).filter(t => t !== tag));
+  collections[idx] = item;
+  saveCollectionsAndRender();
+  showToast('已删除标签');
+}
+
+function addTagToItem(itemId, newTag) {
+  newTag = String(newTag || '').replace(/^#/, '').trim();
+  if (!newTag) {
+    showToast('标签不能为空');
+    return;
+  }
+
+  const idx = collections.findIndex(i => String(i.id) === String(itemId));
+  if (idx === -1) return;
+  const item = collections[idx];
+  const existing = normalizeTags(item.tags || []);
+  if (existing.includes(newTag)) {
+    showToast('标签已存在');
+    return;
+  }
+  existing.unshift(newTag);
+  item.tags = ensureTags(existing);
+  collections[idx] = item;
+  saveCollectionsAndRender();
+  showToast('已添加标签');
+}
+
+function replaceTagOnItem(itemId, oldTag, newTag) {
+  newTag = String(newTag || '').replace(/^#/, '').trim();
+  if (!newTag) {
+    showToast('标签不能为空');
+    return;
+  }
+
+  const idx = collections.findIndex(i => String(i.id) === String(itemId));
+  if (idx === -1) return;
+  const item = collections[idx];
+  const tags = normalizeTags(item.tags || []).map(t => (t === oldTag ? newTag : t));
+  // Remove duplicates after replace
+  item.tags = ensureTags(tags);
+  collections[idx] = item;
+  saveCollectionsAndRender();
+  showToast('已更新标签');
+}
+
+function showAddTagInput(itemId) {
+  const itemEl = document.querySelector(`.collection-item[data-id="${CSS.escape(itemId)}"]`);
+  if (!itemEl) return;
+  const tagsContainer = itemEl.querySelector('.tags');
+  if (!tagsContainer) return;
+  // prevent duplicate input
+  if (tagsContainer.querySelector('.tag-input')) return;
+
+  const input = document.createElement('input');
+  input.className = 'tag-input';
+  input.placeholder = '输入新标签';
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const v = input.value.trim();
+      if (v) addTagToItem(itemId, v);
+      input.remove();
+    } else if (e.key === 'Escape') {
+      input.remove();
+    }
+  });
+  input.addEventListener('blur', () => {
+    const v = input.value.trim();
+    if (v) addTagToItem(itemId, v);
+    input.remove();
+  });
+
+  tagsContainer.appendChild(input);
+  input.focus();
+}
+
+function showEditTagInput(itemId, oldTag, tagEl) {
+  if (!tagEl) return;
+  // prevent multiple inputs
+  if (tagEl.querySelector('.tag-input')) return;
+  const input = document.createElement('input');
+  input.className = 'tag-input';
+  input.value = oldTag;
+  // replace content
+  tagEl.innerHTML = '';
+  tagEl.appendChild(input);
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const v = input.value.trim();
+      if (v) replaceTagOnItem(itemId, oldTag, v);
+    } else if (e.key === 'Escape') {
+      renderCollections();
+    }
+  });
+
+  input.addEventListener('blur', () => {
+    const v = input.value.trim();
+    if (v) replaceTagOnItem(itemId, oldTag, v);
+    else renderCollections();
+  });
+
+  input.focus();
+  input.select();
 }
 
 function escapeHtml(text) {
@@ -339,9 +470,18 @@ function escapeHtml(text) {
 }
 
 async function openCollection(url, domIndex) {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
   if (url) {
-    chrome.tabs.create({ url });
-    return;
+    try {
+      // open in the current tab instead of creating a new one
+      await chrome.tabs.update(tab.id, { url });
+      return;
+    } catch (e) {
+      // fallback to creating a tab
+      try { chrome.tabs.create({ url }); } catch (_) {}
+      return;
+    }
   }
 
   if (!Number.isInteger(domIndex)) {
@@ -349,14 +489,18 @@ async function openCollection(url, domIndex) {
     return;
   }
 
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  const response = await chrome.tabs.sendMessage(tab.id, {
-    action: 'openCollectionCard',
-    domIndex
-  });
+  try {
+    const response = await chrome.tabs.sendMessage(tab.id, {
+      action: 'openCollectionCard',
+      domIndex
+    });
 
-  if (!response?.success) {
-    showToast('Open failed');
+    if (!response?.success) {
+      showToast('Open failed');
+    }
+  } catch (err) {
+    console.warn('sendMessage failed:', err);
+    showToast('打开失败，页面可能未加载或不在小红书');
   }
 }
 
@@ -480,14 +624,58 @@ document.addEventListener('DOMContentLoaded', () => {
   
   document.getElementById('extractBtn').addEventListener('click', extractCollections);
   document.getElementById('exportBtn').addEventListener('click', exportMarkdown);
+  document.getElementById('manageBtn').addEventListener('click', () => {
+    manageMode = !manageMode;
+    document.getElementById('manageBtn').textContent = manageMode ? '完成' : '管理';
+    document.body.classList.toggle('manage-mode', manageMode);
+    renderCollections();
+  });
   document.getElementById('collectionList').addEventListener('click', (event) => {
+    // Tag remove
+    const tagRemove = event.target.closest('.tag-remove');
+    if (tagRemove) {
+      event.stopPropagation();
+      const itemId = tagRemove.dataset.itemId;
+      const tag = tagRemove.dataset.tag;
+      removeTagFromItem(itemId, tag);
+      return;
+    }
+
+    // Tag add
+    const tagAdd = event.target.closest('.tag-add');
+    if (tagAdd) {
+      event.stopPropagation();
+      const itemId = tagAdd.dataset.itemId;
+      showAddTagInput(itemId);
+      return;
+    }
+
+    // If clicking on a tag area while in manage mode, don't open the note
+    if (manageMode && event.target.closest('.tag')) {
+      event.stopPropagation();
+      return;
+    }
+
     if (event.target.closest('.remove-btn')) return;
 
     const item = event.target.closest('.collection-item');
-    if (item) {
-      const domIndex = item.dataset.domIndex === '' ? null : Number(item.dataset.domIndex);
-      openCollection(item.dataset.url, Number.isInteger(domIndex) ? domIndex : null);
-    }
+      if (item) {
+        if (manageMode) return; // don't open while managing
+        const domIndex = item.dataset.domIndex === '' ? null : Number(item.dataset.domIndex);
+        openCollection(item.dataset.url, Number.isInteger(domIndex) ? domIndex : null);
+      }
+  });
+
+  // Double-click to edit tag text
+  document.getElementById('collectionList').addEventListener('dblclick', (event) => {
+    if (!manageMode) return;
+    const tagText = event.target.closest('.tag-text');
+    if (!tagText) return;
+    event.stopPropagation();
+    const tagEl = tagText.parentElement;
+    const itemId = tagEl.dataset.itemId;
+    const oldTag = tagEl.dataset.tag;
+    showEditTagInput(itemId, oldTag, tagEl);
   });
   
   document.getElementById('searchInput').addEventListener('input', (e) => {
