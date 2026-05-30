@@ -34,9 +34,9 @@ const TAG_RULES = [
   { tags: ['职场', '求职'], keywords: ['职场', '求职', '面试', '简历', '工作', '晋升', '薪资', '经验', '技巧'] }
 ];
 
-function generateTags(title) {
+function generateTags(text) {
   const result = [];
-  const lowerTitle = title.toLowerCase();
+  const lowerTitle = String(text || '').toLowerCase();
   
   for (const rule of TAG_RULES) {
     for (const keyword of rule.keywords) {
@@ -48,6 +48,10 @@ function generateTags(title) {
   }
   
   return [...new Set(result)];
+}
+
+function getReusableTags(item) {
+  return (item?.tags || []).filter(tag => !/待分类|寰呭垎/.test(String(tag)));
 }
 
 function showToast(message) {
@@ -191,13 +195,16 @@ async function extractCollections() {
     if (response && response.success && response.data.length > 0) {
       collections = response.data.map(item => {
         const existing = collections.find(c => c.id === item.id);
+        const reusableTags = getReusableTags(existing);
         return {
           ...existing,
           ...item,
-          tags: existing?.tags || generateTags(item.title || '')
+          tags: reusableTags.length
+            ? reusableTags
+            : generateTags(`${item.title || ''} ${item.excerpt || ''}`)
         };
       });
-      
+
       await chrome.storage.local.set({ xhs_collections: collections });
       renderCollections();
       updateTagFilter();
@@ -225,7 +232,7 @@ async function generateAllTags() {
   let updatedCount = 0;
   
   for (const item of collections) {
-    const newTags = generateTags(item.title || '');
+    const newTags = generateTags(`${item.title || ''} ${item.excerpt || ''}`);
     if (JSON.stringify(newTags) !== JSON.stringify(item.tags)) {
       item.tags = newTags;
       updatedCount++;
@@ -284,8 +291,26 @@ function normalizeAiTags(value) {
   )].slice(0, 6);
 }
 
+function buildAiMetadataPrompt(item) {
+  return [
+    'You are a classifier for saved Xiaohongshu posts.',
+    'Return classification tags only. Do not create or rewrite the post title.',
+    'Do not extract hashtags or topic tags from the post. Infer broad, useful archive categories.',
+    'Return only JSON, no markdown, no explanation.',
+    'JSON shape: {"tags":["tag1","tag2","tag3"]}.',
+    'Tags: 2 to 5 concise Chinese classification tags, each 2 to 6 characters.',
+    'Prefer stable categories such as 美食, 旅行, 穿搭, 美妆, 家居, 装修, 数码, 健身, 学习, 摄影, 职场, 母婴, 手作, 理财, 影视, 游戏, 攻略, 教程, 清单, 测评.',
+    'Avoid generic tags like 生活, 分享, 小红书, 收藏, 笔记, 推荐.',
+    'Use the title/text first; use the image only to resolve the category when text is insufficient.',
+    '',
+    `Page title: ${item.title || 'none'}`,
+    `Visible text: ${item.excerpt || 'none'}`,
+    `Current local categories: ${(item.tags || []).join(', ') || 'none'}`
+  ].join('\n');
+}
+
 async function generateTagsWithAi(item) {
-  const content = [{ type: 'text', text: buildAiPrompt(item) }];
+  const content = [{ type: 'text', text: buildAiMetadataPrompt(item) }];
 
   if (item.cover) {
     content.push({
@@ -327,7 +352,7 @@ async function generateTagsWithAi(item) {
   const parsed = extractJsonObject(Array.isArray(message) ? JSON.stringify(message) : message);
   const tags = normalizeAiTags(parsed);
 
-  return tags.length > 0 ? tags : generateTags(item.title || '');
+  return tags.length > 0 ? tags : generateTags(`${item.title || ''} ${item.excerpt || ''}`);
 }
 
 async function generateAllTagsWithAi() {

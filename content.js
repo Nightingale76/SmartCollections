@@ -198,23 +198,41 @@ function isLikelyContentImage(img) {
 
 function getVisualCardFromImage(img) {
   let current = img;
-  let best = null;
+  const candidates = [];
 
-  for (let depth = 0; current && depth < 6; depth++) {
+  for (let depth = 0; current && depth < 8; depth++) {
     const rect = current.getBoundingClientRect();
-    const text = normalizeText(current.textContent);
+    const text = cleanCardText(current.textContent);
 
     if (rect.width >= 100 && rect.height >= 120 && rect.width <= window.innerWidth + 40) {
-      best = current;
-      if (text.length > 0 || current.querySelector('img')) {
-        break;
-      }
+      candidates.push({ el: current, score: scoreVisualCardCandidate(current, text, depth) });
     }
 
     current = current.parentElement;
   }
 
-  return best || img.closest('section, article, div');
+  candidates.sort((a, b) => b.score - a.score);
+  return candidates[0]?.el || img.closest('section, article, div');
+}
+
+function scoreVisualCardCandidate(el, text, depth) {
+  const rect = el.getBoundingClientRect();
+  const className = String(el.className || '').toLowerCase();
+  const imageCount = el.querySelectorAll?.('img').length || 0;
+  let score = 0;
+
+  if (text.length >= 2) score += 8;
+  if (text.length >= 6 && text.length <= 160) score += 4;
+  if (/card|note|feed|item|cover|mask|footer|content/.test(className)) score += 3;
+  if (rect.width >= 120 && rect.width <= 360) score += 2;
+  if (rect.height >= 160 && rect.height <= 520) score += 2;
+  if (imageCount === 1) score += 3;
+  if (imageCount > 2) score -= 10;
+  if (rect.width > 420) score -= 6;
+  if (rect.height > 700) score -= 6;
+  score -= depth * 0.5;
+
+  return score;
 }
 
 function isLikelyCollectionLink(link, collectionMode) {
@@ -298,6 +316,80 @@ async function waitForCollectionCards() {
 
 function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function cleanCardText(text) {
+  return String(text || '')
+    .replace(/\s+/g, ' ')
+    .replace(/^(赞|评论|收藏|分享)\s*\d*$/g, '')
+    .trim();
+}
+
+function pickBestTitle(candidates) {
+  const blocked = /^(赞|评论|收藏|分享|关注|粉丝|获赞|更多|展开|收起|\d+|[0-9.]+万)$/;
+
+  return candidates
+    .map(cleanCardText)
+    .filter(text => text.length >= 2 && text.length <= 120)
+    .filter(text => !blocked.test(text))
+    .sort((a, b) => {
+      const aScore = scoreTitleCandidate(a);
+      const bScore = scoreTitleCandidate(b);
+      return bScore - aScore;
+    })[0] || '';
+}
+
+function scoreTitleCandidate(text) {
+  let score = 0;
+  if (/[\u4e00-\u9fa5]/.test(text)) score += 4;
+  if (text.length >= 6 && text.length <= 40) score += 3;
+  if (/[，。！？、,.!?]/.test(text)) score += 1;
+  if (/赞|评论|收藏|分享|关注/.test(text)) score -= 4;
+  if (/^\d+(\.\d+)?万?$/.test(text)) score -= 8;
+  return score;
+}
+
+function getCardTextCandidates(card) {
+  const candidates = [];
+  const attrs = ['aria-label', 'title', 'alt'];
+
+  attrs.forEach(attr => {
+    const value = card.getAttribute?.(attr);
+    if (value) candidates.push(value);
+  });
+
+  card.querySelectorAll?.('h1, h2, h3, h4, [title], [aria-label], img[alt], span, div, p').forEach(el => {
+    attrs.forEach(attr => {
+      const value = el.getAttribute?.(attr);
+      if (value) candidates.push(value);
+    });
+
+    const text = cleanCardText(el.textContent);
+    if (text && text.length <= 160) {
+      candidates.push(text);
+    }
+  });
+
+  let current = card.parentElement;
+  let depth = 0;
+  while (current && depth < 3) {
+    current.querySelectorAll?.('h1, h2, h3, h4, [title], [aria-label], img[alt], span, div, p').forEach(el => {
+      attrs.forEach(attr => {
+        const value = el.getAttribute?.(attr);
+        if (value) candidates.push(value);
+      });
+
+      const text = cleanCardText(el.textContent);
+      if (text && text.length <= 160) {
+        candidates.push(text);
+      }
+    });
+
+    current = current.parentElement;
+    depth++;
+  }
+
+  return candidates;
 }
 
 function getExtractionDebug(collections) {
@@ -391,9 +483,14 @@ function extractCardInfo(card) {
 
   item.domIndex = domIndex;
   
-  const titleElements = card.querySelectorAll('h3, .title, .note-title, .content-title, .desc, .note-desc, [class*="title"], [class*="desc"]');
+  const visibleText = cleanCardText(card.textContent);
+  if (visibleText) {
+    item.excerpt = visibleText.slice(0, 500);
+  }
+
+  const titleElements = card.querySelectorAll('h1, h2, h3, h4, .title, .note-title, .content-title, .desc, .note-desc, [class*="title"], [class*="desc"]');
   for (const el of titleElements) {
-    const text = el.textContent.trim();
+    const text = cleanCardText(el.textContent || el.getAttribute('title') || el.getAttribute('aria-label'));
     if (text && text.length > 0 && text.length < 200) {
       item.title = text;
       break;
@@ -407,9 +504,12 @@ function extractCardInfo(card) {
     }
   }
 
-  const visibleText = card.textContent.replace(/\s+/g, ' ').trim();
-  if (visibleText) {
-    item.excerpt = visibleText.slice(0, 500);
+  if (!item.title) {
+    item.title = pickBestTitle(getCardTextCandidates(card));
+  }
+
+  if (!item.title && item.excerpt) {
+    item.title = item.excerpt.slice(0, 60);
   }
   
   const authorElements = card.querySelectorAll('.user-name, .author, .nickname, [class*="user"], [class*="author"]');
@@ -421,9 +521,13 @@ function extractCardInfo(card) {
     }
   }
   
-  const imgElement = card.querySelector('img[src*="http"]');
+  const imgElement = card.matches?.('img') ? card : card.querySelector('img');
   if (imgElement) {
-    let src = imgElement.src || imgElement.getAttribute('data-src') || imgElement.getAttribute('data-lazy-src');
+    let src = imgElement.currentSrc ||
+      imgElement.src ||
+      imgElement.getAttribute('data-src') ||
+      imgElement.getAttribute('data-lazy-src') ||
+      imgElement.getAttribute('src');
     if (src) {
       src = src.replace(/\/w\d+\/h\d+/, '/w600/h600');
       item.cover = src;
