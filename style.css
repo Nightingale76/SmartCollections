@@ -33,9 +33,18 @@ body {
   --theme-menu-bg: rgba(20, 22, 32, 0.96);
   --theme-option-hover: rgba(255,255,255,0.09);
   --brand-gradient: linear-gradient(90deg, #ff2f5f 0%, #fe2c55 42%, #ff5f7f 70%, #ff8a3d 100%);
-  --extract-bg: linear-gradient(135deg, #ff7a91 0%, #ff2f72 36%, #fe2c55 62%, #ff8a3d 100%);
-  --export-bg: linear-gradient(135deg, #45e0d5 0%, #00c2c2 38%, #0d8fd6 68%, #246bfe 100%);
-  --manage-bg: linear-gradient(135deg, #b86bff 0%, #7c3aed 42%, #5b2cff 68%, #d946ef 100%);
+  --extract-bg: linear-gradient(135deg, #e96f82 0%, #dc3f68 42%, #d94f5f 68%, #dc7a4a 100%);
+  --export-bg: linear-gradient(135deg, #55c7c1 0%, #20aab4 42%, #2d8ac6 70%, #4a73d6 100%);
+  --manage-bg: linear-gradient(135deg, #a574df 0%, #7a5ed6 42%, #6c54d9 68%, #bf5fc8 100%);
+  --extract-bg-glass:
+    radial-gradient(circle at center, rgba(255,255,255,0.18) 0%, rgba(233,111,130,0.26) 45%, rgba(220,63,104,0.72) 100%),
+    linear-gradient(135deg, rgba(233,111,130,0.64), rgba(220,122,74,0.58));
+  --export-bg-glass:
+    radial-gradient(circle at center, rgba(255,255,255,0.18) 0%, rgba(85,199,193,0.24) 45%, rgba(32,170,180,0.68) 100%),
+    linear-gradient(135deg, rgba(85,199,193,0.58), rgba(74,115,214,0.56));
+  --manage-bg-glass:
+    radial-gradient(circle at center, rgba(255,255,255,0.18) 0%, rgba(165,116,223,0.24) 45%, rgba(122,94,214,0.68) 100%),
+    linear-gradient(135deg, rgba(165,116,223,0.58), rgba(191,95,200,0.56));
   --button-text: #f4e8f0;
   --tag-bg: linear-gradient(135deg, #2b2f3a 0%, #1e222c 100%);
   --tag-text: #c8ceda;
@@ -77,6 +86,15 @@ body.theme-redbook {
   --extract-bg: linear-gradient(135deg, #ff6f86 0%, #ff2f55 52%, #d90429 100%);
   --export-bg: linear-gradient(135deg, #ff6f86 0%, #ff2f55 52%, #d90429 100%);
   --manage-bg: linear-gradient(135deg, #ff6f86 0%, #ff2f55 52%, #d90429 100%);
+  --extract-bg-glass:
+    radial-gradient(circle at center, rgba(255,255,255,0.26) 0%, rgba(255,111,134,0.26) 45%, rgba(255,47,85,0.68) 100%),
+    linear-gradient(135deg, rgba(255,111,134,0.58), rgba(217,4,41,0.54));
+  --export-bg-glass:
+    radial-gradient(circle at center, rgba(255,255,255,0.26) 0%, rgba(255,111,134,0.26) 45%, rgba(255,47,85,0.68) 100%),
+    linear-gradient(135deg, rgba(255,111,134,0.58), rgba(217,4,41,0.54));
+  --manage-bg-glass:
+    radial-gradient(circle at center, rgba(255,255,255,0.26) 0%, rgba(255,111,134,0.26) 45%, rgba(255,47,85,0.68) 100%),
+    linear-gradient(135deg, rgba(255,111,134,0.58), rgba(217,4,41,0.54));
   --button-text: #fff2f5;
   --tag-bg: linear-gradient(135deg, #fff 0%, #ffe0e8 100%);
   --tag-text: #d90429;
@@ -111,6 +129,15 @@ body.theme-bilibili {
   --extract-bg: linear-gradient(135deg, #ff9ac8 0%, #fb7299 52%, #e85d8f 100%);
   --export-bg: linear-gradient(135deg, #7bd5ff 0%, #58c7f3 52%, #2497d4 100%);
   --manage-bg: linear-gradient(135deg, #ffb3d2 0%, #fb7299 52%, #b86bff 100%);
+  --extract-bg-glass:
+    radial-gradient(circle at center, rgba(255,255,255,0.3) 0%, rgba(255,154,200,0.26) 45%, rgba(251,114,153,0.66) 100%),
+    linear-gradient(135deg, rgba(255,154,200,0.56), rgba(232,93,143,0.52));
+  --export-bg-glass:
+    radial-gradient(circle at center, rgba(255,255,255,0.3) 0%, rgba(123,213,255,0.26) 45%, rgba(88,199,243,0.66) 100%),
+    linear-gradient(135deg, rgba(123,213,255,0.56), rgba(36,151,212,0.52));
+  --manage-bg-glass:
+    radial-gradient(circle at center, rgba(255,255,255,0.3) 0%, rgba(255,179,210,0.26) 45%, rgba(251,114,153,0.66) 100%),
+    linear-gradient(135deg, rgba(255,179,210,0.56), rgba(184,107,255,0.52));
   --button-text: #fff7fb;
   --tag-bg: linear-gradient(135deg, #fff5fa 0%, #ffe2ef 100%);
   --tag-text: #d94c7d;
@@ -273,12 +300,38 @@ body.theme-bilibili {
   color: var(--button-text);
   cursor: pointer;
   transition: 0.2s;
+  position: relative;
+  overflow: hidden;
   text-shadow:
     0 1px 1px rgba(0,0,0,0.35),
     0 2px 6px rgba(0,0,0,0.22);
   box-shadow:
     inset 0 -10px 18px rgba(0,0,0,0.12),
     0 8px 20px rgba(0,0,0,0.24);
+}
+
+.actions button::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.36), rgba(255,255,255,0.08));
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+}
+
+.actions button:hover,
+.actions button:focus-visible {
+  border: 1px solid rgba(255,255,255,0.32);
+  backdrop-filter: blur(14px) saturate(125%);
+  -webkit-backdrop-filter: blur(14px) saturate(125%);
+}
+
+.actions button:hover::before,
+.actions button:focus-visible::before {
+  opacity: 1;
 }
 
 #extractBtn {
@@ -288,6 +341,11 @@ body.theme-bilibili {
     0 10px 22px rgba(254, 44, 85, 0.34);
 }
 
+#extractBtn:hover,
+#extractBtn:focus-visible {
+  background: var(--extract-bg-glass);
+}
+
 #exportBtn {
   background: var(--export-bg);
   box-shadow:
@@ -295,9 +353,14 @@ body.theme-bilibili {
     0 10px 22px rgba(0, 178, 210, 0.3);
 }
 
+#exportBtn:hover,
+#exportBtn:focus-visible {
+  background: var(--export-bg-glass);
+}
+
 .actions button:hover {
   transform: translateY(-1px);
-  filter: brightness(1.08);
+  filter: brightness(1.04);
 }
 
 .classification-status {
@@ -311,6 +374,11 @@ body.theme-bilibili {
   box-shadow:
     inset 0 -10px 18px rgba(42,12,92,0.24),
     0 10px 22px rgba(124, 58, 237, 0.32);
+}
+
+#manageBtn:hover,
+#manageBtn:focus-visible {
+  background: var(--manage-bg-glass);
 }
 
 #manageBtn:hover {
