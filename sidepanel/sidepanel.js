@@ -7,6 +7,7 @@
   let currentView = 'all';
   let searchTerm = '';
   let selectedTag = '';
+  let selectedFolder = '';
   let sortOrder = 'newest';
 
   const STORAGE_KEYS = window.XHS_CONSTANTS ? window.XHS_CONSTANTS.STORAGE_KEYS : {
@@ -14,16 +15,43 @@
     SETTINGS: 'xhs_settings',
     PET_SETTINGS: 'xhs_pet_settings'
   };
+  const FOLDERS_KEY = 'memora_folders';
+  const PRESET_FOLDERS = ['美妆', '穿搭', '数码', '游戏', '旅游', '学习', '美食', '摄影', '家居', '健身', '音乐', '影视', '汽车', '母婴', '理财', '宠物', '手作'];
+  let FOLDERS = [];
   const DEFAULT_SETTINGS = { petMode: 'companion' };
   const DEFAULT_PET_SETTINGS = { petName: '小助手', petPosition: null };
 
   document.addEventListener('DOMContentLoaded', async () => {
     await loadSettings();
+    await loadFoldersFromStorage();
     await loadPetSettings();
+    await loadAiConfig();
     await loadCollections();
     initEventListeners();
     updateUI();
   });
+
+  async function loadFoldersFromStorage() {
+    try {
+      const res = await chrome.storage.local.get(FOLDERS_KEY);
+      const stored = res[FOLDERS_KEY];
+      if (Array.isArray(stored) && stored.length > 0) {
+        FOLDERS = stored.filter(Boolean).map(f => String(f).trim()).filter(Boolean);
+      } else {
+        FOLDERS = PRESET_FOLDERS.slice();
+      }
+    } catch (err) {
+      FOLDERS = PRESET_FOLDERS.slice();
+    }
+  }
+
+  async function saveFoldersToStorage() {
+    try {
+      await chrome.storage.local.set({ [FOLDERS_KEY]: FOLDERS });
+    } catch (err) {
+      console.warn('saveFoldersToStorage failed', err);
+    }
+  }
 
   async function loadSettings() {
     try {
@@ -40,6 +68,57 @@
       petSettings = result[STORAGE_KEYS.PET_SETTINGS] || { ...DEFAULT_PET_SETTINGS };
     } catch (e) {
       petSettings = { ...DEFAULT_PET_SETTINGS };
+    }
+  }
+
+  // AI config storage key
+  const AI_CONFIG_STORAGE_KEY = 'memora_ai_config';
+
+  async function loadAiConfig() {
+    try {
+      const res = await chrome.storage.local.get([AI_CONFIG_STORAGE_KEY]);
+      const cfg = res[AI_CONFIG_STORAGE_KEY];
+      if (cfg && typeof cfg === 'object') {
+        window.SMART_COLLECTIONS_AI_CONFIG = cfg;
+      }
+      // populate input
+      const input = document.getElementById('aiApiKeyInput');
+      if (input && window.SMART_COLLECTIONS_AI_CONFIG && window.SMART_COLLECTIONS_AI_CONFIG.apiKey) {
+        input.value = window.SMART_COLLECTIONS_AI_CONFIG.apiKey;
+      }
+    } catch (e) {
+      console.warn('loadAiConfig failed', e);
+    }
+  }
+
+  async function saveAiConfig(apiKey) {
+    try {
+      const base = (window.SMART_COLLECTIONS_AI_CONFIG && window.SMART_COLLECTIONS_AI_CONFIG.baseUrl) || 'https://dashscope.aliyuncs.com/compatible-mode/v1';
+      const model = (window.SMART_COLLECTIONS_AI_CONFIG && window.SMART_COLLECTIONS_AI_CONFIG.model) || 'qwen-plus';
+      const cfg = { apiKey: String(apiKey || '').trim(), model, baseUrl: base };
+      await chrome.storage.local.set({ [AI_CONFIG_STORAGE_KEY]: cfg });
+      window.SMART_COLLECTIONS_AI_CONFIG = cfg;
+      const modelName = document.getElementById('modelName');
+      if (modelName) modelName.textContent = cfg.model || 'qwen-plus';
+      showToast('AI Key 已保存');
+    } catch (e) {
+      console.error('saveAiConfig failed', e);
+      showToast('保存失败');
+    }
+  }
+
+  async function clearAiConfig() {
+    try {
+      await chrome.storage.local.remove([AI_CONFIG_STORAGE_KEY]);
+      // reset to default qwen-config.js
+      const defaultCfg = window.SMART_COLLECTIONS_AI_CONFIG || { apiKey: '', model: 'qwen-plus', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1' };
+      window.SMART_COLLECTIONS_AI_CONFIG = defaultCfg;
+      const input = document.getElementById('aiApiKeyInput');
+      if (input) input.value = '';
+      showToast('AI Key 已清除');
+    } catch (e) {
+      console.error('clearAiConfig failed', e);
+      showToast('清除失败');
     }
   }
 
@@ -92,6 +171,7 @@
       renderCollections();
       updateTagFilter();
       updateStats();
+      renderFolders();
     } catch (e) {
       collections = [];
     }
@@ -102,10 +182,41 @@
       item.addEventListener('click', () => switchView(item.dataset.view));
     });
 
+    const toggleFoldersBtn = document.getElementById('toggleFoldersBtn');
+    const sidebarFolderList = document.getElementById('sidebarFolderList');
+    if (toggleFoldersBtn && sidebarFolderList) {
+      toggleFoldersBtn.addEventListener('click', () => {
+        const expanded = toggleFoldersBtn.getAttribute('aria-expanded') === 'true';
+        toggleFoldersBtn.setAttribute('aria-expanded', String(!expanded));
+        sidebarFolderList.style.display = expanded ? 'none' : 'block';
+      });
+    }
+
     document.getElementById('searchInput').addEventListener('input', (e) => {
       searchTerm = e.target.value;
       renderCollections();
     });
+
+    const addInput = document.getElementById('addFolderInput');
+    const addBtn = document.getElementById('addFolderBtn');
+    if (addBtn && addInput) {
+      addBtn.addEventListener('click', async () => {
+        const v = addInput.value.trim();
+        if (v) {
+          await addFolder(v);
+          addInput.value = '';
+        }
+      });
+      addInput.addEventListener('keydown', async (e) => {
+        if (e.key === 'Enter') {
+          const v = addInput.value.trim();
+          if (v) {
+            await addFolder(v);
+            addInput.value = '';
+          }
+        }
+      });
+    }
 
     document.getElementById('tagFilter').addEventListener('change', (e) => {
       selectedTag = e.target.value;
@@ -149,6 +260,69 @@
         updateSettingsUI();
       });
     });
+
+    // AI key save/clear handlers
+    const saveBtn = document.getElementById('saveAiKeyBtn');
+    const clearBtn = document.getElementById('clearAiKeyBtn');
+    if (saveBtn) {
+      saveBtn.addEventListener('click', async () => {
+        const v = document.getElementById('aiApiKeyInput')?.value || '';
+        if (!v) { showToast('API Key 不能为空'); return; }
+        await saveAiConfig(v);
+      });
+    }
+    if (clearBtn) {
+      clearBtn.addEventListener('click', async () => {
+        if (!confirm('确认清除已保存的 AI Key 吗？')) return;
+        await clearAiConfig();
+      });
+    }
+  }
+
+  function getFolderCounts() {
+    return collections.reduce((counts, item) => {
+      const folder = (item.folder || '').toString();
+      const key = folder || '其他';
+      counts.set(key, (counts.get(key) || 0) + 1);
+      return counts;
+    }, new Map());
+  }
+
+  function renderFolders() {
+    const container = document.getElementById('sidebarFolderList');
+    if (!container) return;
+    const counts = getFolderCounts();
+
+    const folderButtons = [ { folder: '', label: '全部收藏', count: collections.length } ];
+    for (const folder of FOLDERS) {
+      folderButtons.push({ folder, label: folder, count: counts.get(folder) || 0 });
+    }
+    folderButtons.push({ folder: '其他', label: '其他', count: counts.get('其他') || 0 });
+
+    container.innerHTML = folderButtons.map(item => `
+      <div class="folder-entry" style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;">
+        <button class="folder-btn" data-folder="${escapeHtml(item.folder)}" style="flex:1;text-align:left;background:none;border:none;color:inherit;padding:0;margin:0;">${escapeHtml(item.label)}</button>
+        <span class="folder-count" style="opacity:0.8;margin-left:8px;">${item.count}</span>
+      </div>
+    `).join('');
+
+    container.querySelectorAll('.folder-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        selectedFolder = btn.dataset.folder || '';
+        renderCollections();
+      });
+    });
+    // update folder badge
+    const folderBadge = document.getElementById('folderBadge');
+    if (folderBadge) folderBadge.textContent = String(FOLDERS.length || 0);
+  }
+
+  async function addFolder(name) {
+    const n = String(name || '').trim();
+    if (!n) return;
+    if (!FOLDERS.includes(n)) FOLDERS.push(n);
+    await saveFoldersToStorage();
+    renderFolders();
   }
 
   function updateUI() {
@@ -218,6 +392,14 @@
       settingsView.style.display = 'none';
       renderCollections();
     }
+    // expand/collapse folder panel when viewing byTag
+    const toggleFoldersBtn = document.getElementById('toggleFoldersBtn');
+    const sidebarFolderList = document.getElementById('sidebarFolderList');
+    if (toggleFoldersBtn && sidebarFolderList) {
+      const expand = view === 'byTag';
+      toggleFoldersBtn.setAttribute('aria-expanded', String(expand));
+      sidebarFolderList.style.display = expand ? 'block' : 'none';
+    }
   }
 
   function filterAndSortCollections() {
@@ -235,6 +417,10 @@
       filtered = filtered.filter(item =>
         item.tags && item.tags.includes(selectedTag)
       );
+    }
+
+    if (selectedFolder) {
+      filtered = filtered.filter(item => (item.folder || '其他') === (selectedFolder || ''));
     }
 
     switch (sortOrder) {
@@ -478,6 +664,7 @@
         renderCollections();
         updateTagFilter();
         updateStats();
+        renderFolders();
         updateUI();
       }
     } catch (e) {}

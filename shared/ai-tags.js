@@ -3,6 +3,17 @@
 
   const DEFAULT_TAG = '其他';
 
+  const DEFAULT_FOLDER = '其他';
+
+  const FOLDER_RULES = [
+    { folder: '美妆', keywords: ['美妆', '护肤', '化妆', '口红', '粉底', '面膜', '精华', '眼霜', '防晒', '彩妆'] },
+    { folder: '穿搭', keywords: ['穿搭', '时尚', '衣服', '搭配', '女装', '男装', '鞋子', '包包', '配饰', '品牌'] },
+    { folder: '数码', keywords: ['数码', '手机', '电脑', '耳机', '相机', '测评', '开箱', '科技', 'ai', 'app', '软件', '算法', '编程'] },
+    { folder: '游戏', keywords: ['游戏', '手游', '主机', '电竞', '原神', '王者', 'steam', '攻略'] },
+    { folder: '旅游', keywords: ['旅行', '旅游', '攻略', '景点', '酒店', '民宿', '周末', '假期', '出游', '周边游', '自驾'] },
+    { folder: '学习', keywords: ['学习', '读书', '书单', '考研', '备考', '笔记', '效率', '时间管理', '知识', '教程', '课程'] }
+  ];
+
   const TAG_RULES = [
     { tags: ['美食'], keywords: ['吃', '美食', '菜谱', '餐厅', '做饭', '烹饪', '甜点', '下午茶', '早餐', '午餐', '晚餐', '探店', '打卡', '食谱'] },
     { tags: ['旅行'], keywords: ['旅行', '旅游', '攻略', '景点', '酒店', '民宿', '周末', '假期', '出游', '周边游', '自驾'] },
@@ -146,6 +157,152 @@
     ].join(' ')));
   }
 
+  function getLocalFolderForItem(item) {
+    const text = [
+      item.title,
+      item.author,
+      item.text || item.excerpt,
+      item.url
+    ].join(' ').toLowerCase();
+
+    // 1) try keyword rules from text
+    for (const rule of FOLDER_RULES) {
+      if (rule.keywords.some(keyword => text.includes(keyword.toLowerCase()))) {
+        return rule.folder;
+      }
+    }
+
+    // 2) if there are tags (explicit or from item), try to infer folder from tags
+    const tags = Array.isArray(item.tags) && item.tags.length > 0 ? item.tags : getLocalTagsForItem(item);
+    const inferred = inferFolderFromTags(tags);
+    if (inferred) return inferred;
+
+    return DEFAULT_FOLDER;
+  }
+
+  function inferFolderFromTags(tags) {
+    if (!Array.isArray(tags) || tags.length === 0) return null;
+    const lowerTags = tags.map(t => String(t || '').toLowerCase());
+
+    // direct match: tag equals folder name
+    for (const rule of FOLDER_RULES) {
+      if (lowerTags.includes(rule.folder.toLowerCase())) return rule.folder;
+    }
+
+    // match tag keywords against folder keywords
+    for (const rule of FOLDER_RULES) {
+      for (const kw of rule.keywords) {
+        if (lowerTags.includes(kw.toLowerCase())) return rule.folder;
+      }
+    }
+
+    return null;
+  }
+
+  function normalizeFolder(folder, fallback = DEFAULT_FOLDER) {
+    const value = String(folder || '').replace(/^#/, '').trim();
+    if (!value) return fallback;
+
+    const synonymMap = {
+      护肤: '美妆',
+      彩妆: '美妆',
+      时尚: '穿搭',
+      科技: '数码',
+      软件: '数码',
+      教程: '学习',
+      教育: '学习',
+      考试: '学习',
+      旅行: '旅游',
+      攻略: '旅游'
+    };
+
+    return synonymMap[value] || value || fallback;
+  }
+
+  function buildFullClassificationPrompt(item, mode = 'full') {
+    // reuse existing tag prompt but include folder guidance when mode !== 'tags'
+    const base = [];
+    if (mode === 'folder') {
+      base.push('你是一名面向小红书/抖音收藏内容的分类器。仅输出 JSON: {"folder":"<一级分类>"}，folder 必须从这些选项中选择：美妆、穿搭、数码、游戏、旅游、学习、其他。');
+    } else if (mode === 'tags') {
+      base.push('你是一名面向小红书/抖音收藏内容的分类器。仅输出 JSON: {"tags":["标签1","标签2"]}，输出 1 到 5 个中文话题标签。');
+    } else {
+      base.push('你是一名面向小红书/抖音收藏内容的分类器。请输出 JSON: {"folder":"学习","tags":["标签1","标签2"]}。folder 必须从这些选项中选择：美妆、穿搭、数码、游戏、旅游、学习、其他。输出 1 到 5 个中文话题标签。');
+    }
+
+    base.push(`标题：${item.title || '无'}`);
+    base.push(`内容形态：${item.type || item.mediaType || '未知'}`);
+    base.push(`作者：${item.author || '无'}`);
+    base.push(`链接：${item.url || '无'}`);
+    base.push(`可见文本：${item.text || item.excerpt || '无'}`);
+    base.push(`是否有封面图：${item.cover ? '有' : '无'}`);
+
+    return base.join('\n');
+  }
+
+  async function generateClassification(item, options = {}) {
+    const { includeImage = false, mode = 'full' } = options;
+    const local = {
+      folder: getLocalFolderForItem(item),
+      tags: getLocalTagsForItem(item)
+    };
+
+    const AI_CONFIG = window.SMART_COLLECTIONS_AI_CONFIG || {};
+    if (!AI_CONFIG.apiKey) {
+      if (mode === 'folder') return { folder: local.folder };
+      if (mode === 'tags') return { tags: local.tags };
+      return local;
+    }
+
+    const prompt = buildFullClassificationPrompt(item, mode === 'folder' ? 'folder' : mode === 'tags' ? 'tags' : 'full');
+    const content = [{ type: 'text', text: prompt }];
+    if (includeImage && item.cover) {
+      content.push({ type: 'image_url', image_url: { url: item.cover } });
+    }
+
+    try {
+      const response = await fetchWithTimeout(getAiEndpoint(), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${AI_CONFIG.apiKey}`
+        },
+        body: JSON.stringify({
+          model: AI_CONFIG.model || 'qwen-plus',
+          messages: [ { role: 'user', content } ],
+          temperature: 0.1,
+          top_p: 0.8
+        })
+      });
+
+      if (!response.ok) throw new Error(`AI request failed: ${response.status}`);
+      const data = await response.json();
+      const message = data?.choices?.[0]?.message?.content;
+      const parsed = parseJsonObject(getMessageText(message));
+
+      if (mode === 'folder') {
+        const folder = normalizeFolder(parsed?.folder, local.folder);
+        return { folder };
+      }
+
+      if (mode === 'tags') {
+        const tags = ensureTags(parsed?.tags || local.tags);
+        return { tags };
+      }
+
+      // full
+      const folder = normalizeFolder(parsed?.folder, local.folder);
+      const aiTags = removeDefaultTagWhenSpecific(parsed?.tags);
+      const tags = aiTags.length > 0 && !aiTags.includes(DEFAULT_TAG) ? aiTags : local.tags;
+      return { folder, tags };
+    } catch (error) {
+      console.warn('[ai-tags] generateClassification failed, fallback to local:', error);
+      if (mode === 'folder') return { folder: local.folder };
+      if (mode === 'tags') return { tags: local.tags };
+      return local;
+    }
+  }
+
   async function fetchWithTimeout(url, options, timeoutMs = AI_REQUEST_TIMEOUT_MS) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -213,16 +370,23 @@
     TAG_RULES,
     EXTRA_TAG_RULES,
     DEFAULT_TAG,
+    DEFAULT_FOLDER,
+    FOLDER_RULES,
     generateTags,
     getAiEndpoint,
     buildClassificationPrompt,
+    buildFullClassificationPrompt,
     parseJsonObject,
     normalizeTags,
     ensureTags,
     removeDefaultTagWhenSpecific,
     getMessageText,
     getLocalTagsForItem,
+    getLocalFolderForItem,
+    inferFolderFromTags,
+    normalizeFolder,
     fetchWithTimeout,
-    generateClassificationTags
+    generateClassificationTags,
+    generateClassification
   };
 })();

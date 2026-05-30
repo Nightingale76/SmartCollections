@@ -15,12 +15,44 @@
   const PET_STATES = { IDLE: 'idle', THINKING: 'thinking', HAPPY: 'happy' };
   const PET_MODES = { QUIET: 'quiet', COMPANION: 'companion', ACTIVE: 'active' };
 
+  const AI_CONFIG_STORAGE_KEY = 'memora_ai_config';
+
+  async function loadAiConfig() {
+    try {
+      const res = await chrome.storage.local.get([AI_CONFIG_STORAGE_KEY]);
+      const cfg = res[AI_CONFIG_STORAGE_KEY];
+      if (cfg && typeof cfg === 'object') {
+        window.SMART_COLLECTIONS_AI_CONFIG = cfg;
+      }
+    } catch (e) {
+      console.warn('loadAiConfig failed', e);
+    }
+  }
+
   document.addEventListener('DOMContentLoaded', async () => {
     await loadSettings();
+    await loadAiConfig();
     await loadCollections();
     initEventListeners();
     updateUI();
   });
+
+  // auto-trigger smarter tag generation when existing tags look uniformly uninformative (e.g., all '游戏')
+  async function maybeAutoRegenerateTags() {
+    if (!collections || collections.length === 0) return;
+    const allTags = [...new Set(collections.flatMap(item => item.tags || []))];
+    if (allTags.length === 1 && allTags[0] === '游戏') {
+      // silently run local+AI generation to improve quality
+      try {
+        await generateAllTags();
+      } catch (e) {
+        console.warn('auto generate tags failed', e);
+      }
+    }
+  }
+
+  // run auto-check after initial load
+  (async () => { await maybeAutoRegenerateTags(); })();
 
   async function loadSettings() {
     try {
@@ -124,6 +156,17 @@
             } else if (!item.tags || item.tags.length === 0) {
               item.tags = ['其他'];
             }
+            // determine folder using AI classification if available, otherwise local rules
+            if (AI_TAGS && AI_TAGS.generateClassification) {
+              try {
+                const folderRes = await AI_TAGS.generateClassification(item, { includeImage: false, mode: 'folder' });
+                item.folder = folderRes.folder || (AI_TAGS.getLocalFolderForItem ? AI_TAGS.getLocalFolderForItem(item) : '其他');
+              } catch (e) {
+                item.folder = (AI_TAGS.getLocalFolderForItem ? AI_TAGS.getLocalFolderForItem(item) : '其他');
+              }
+            } else {
+              item.folder = (AI_TAGS.getLocalFolderForItem ? AI_TAGS.getLocalFolderForItem(item) : '其他');
+            }
             item.savedAt = new Date().toISOString();
             collections.push(item);
             addedCount++;
@@ -174,18 +217,22 @@
 
     for (const item of collections) {
       processedCount++;
-      const newTags = await AI_TAGS.generateClassificationTags(item, { includeImage: false });
-      
-      if (JSON.stringify(newTags) !== JSON.stringify(item.tags)) {
-        item.tags = newTags;
-        updatedCount++;
-        
-        try {
-          await chrome.storage.local.set({ [STORAGE_KEYS.COLLECTIONS]: collections });
-        } catch (e) {}
-        
-        renderCollections();
-        updateTagFilter();
+      // use generateClassification (AI full classifier) for better results; fallback handled inside
+      try {
+        const res = await AI_TAGS.generateClassification(item, { includeImage: false, mode: 'tags' });
+        const newTags = res && res.tags ? res.tags : (AI_TAGS.getLocalTagsForItem ? AI_TAGS.getLocalTagsForItem(item) : (item.tags || ['其他']));
+
+        if (JSON.stringify(newTags) !== JSON.stringify(item.tags)) {
+          item.tags = newTags;
+          updatedCount++;
+          try {
+            await chrome.storage.local.set({ [STORAGE_KEYS.COLLECTIONS]: collections });
+          } catch (e) {}
+          renderCollections();
+          updateTagFilter();
+        }
+      } catch (e) {
+        console.warn('generateAllTags item failed, fallback to local:', e);
       }
     }
 

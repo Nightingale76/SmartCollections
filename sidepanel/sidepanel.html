@@ -27,6 +27,16 @@
           <span class="nav-icon">🏷️</span>
           <span class="nav-text">按标签</span>
         </button>
+        <div class="nav-folders">
+          <button id="toggleFoldersBtn" class="nav-item" aria-expanded="false">
+            <span class="nav-icon">📁</span>
+            <span class="nav-text">收藏夹</span>
+            <span class="nav-badge" id="folderBadge">0</span>
+          </button>
+          <div id="sidebarFolderList" class="folder-panel" style="display:none;padding:8px 12px;">
+            <!-- folders rendered here -->
+          </div>
+        </div>
         <button class="nav-item" data-view="stats">
           <span class="nav-icon">📊</span>
           <span class="nav-text">统计数据</span>
@@ -58,12 +68,17 @@
           <select id="tagFilter" class="glass-select">
             <option value="">全部标签</option>
           </select>
+          <div class="folder-controls" style="display:flex;gap:8px;align-items:center;margin-left:12px;">
+            <input id="addFolderInput" type="text" class="glass-input" placeholder="新建收藏夹" style="width:140px;">
+            <button id="addFolderBtn" class="glass-btn">+</button>
+          </div>
           <select id="sortOrder" class="glass-select">
             <option value="newest">最新优先</option>
             <option value="oldest">最旧优先</option>
             <option value="title">标题排序</option>
           </select>
         </div>
+        
       </header>
 
       <div class="view-container scrollbar-thin" id="viewContainer">
@@ -142,6 +157,14 @@
                 <span class="model-provider">阿里云百炼</span>
               </div>
             </div>
+              <div class="setting-item">
+                <label class="setting-label">API Key</label>
+                <input type="text" id="aiApiKeyInput" class="setting-input" placeholder="输入 DashScope API Key（sk-...）">
+                <div style="margin-top:8px;display:flex;gap:8px;">
+                  <button id="saveAiKeyBtn" class="glass-btn">保存</button>
+                  <button id="clearAiKeyBtn" class="glass-btn">清除</button>
+                </div>
+              </div>
           </div>
         </div>
       </div>
@@ -150,6 +173,7 @@
 
   <script src="../shared/constants.js"></script>
   <script src="../shared/utils.js"></script>
+  <script src="../shared/qwen-config.js"></script>
   <script src="../shared/ai-tags.js"></script>
   <script src="sidepanel.js"></script>
 </body>
