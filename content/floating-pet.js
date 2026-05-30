@@ -113,12 +113,12 @@
     const root = this.element.querySelector('#pet-root');
     root.innerHTML = '<div class="pet-mini-panel">' +
       '<div class="mini-panel-header">' +
-        '<span class="platform-badge">' + platformIcon + ' ' + platformName + '</span>' +
+        '<span class="platform-badge">💾 Memora</span>' +
       '</div>' +
       '<div class="mini-panel-content">' +
         '<button class="mini-btn extract-btn" data-action="extract">' +
           '<span class="btn-icon">📥</span>' +
-          '<span class="btn-text">提取当前页内容</span>' +
+          '<span class="btn-text">提取当前页</span>' +
         '</button>' +
         '<button class="mini-btn sidepanel-btn" data-action="sidepanel">' +
           '<span class="btn-icon">📚</span>' +

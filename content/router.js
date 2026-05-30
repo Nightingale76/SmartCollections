@@ -20,6 +20,9 @@
     'douyin.com': 'douyin'
   };
 
+  let bridgeCollectedItems = [];
+  let bridgeReady = false;
+
   function getCurrentPlatform() {
     const hostname = window.location.hostname;
     console.log('[router] Current hostname:', hostname);
@@ -30,6 +33,36 @@
     return getCurrentPlatform() !== null;
   }
 
+  function convertBridgeItemToStandard(item) {
+    return {
+      platform: PLATFORMS.XIAOHONGSHU,
+      id: item.note_id,
+      url: item.url,
+      type: item.note_type === 'video' ? 'video' : 'note',
+      title: item.title,
+      author: item.author,
+      text: item.title,
+      cover: item.cover,
+      stats: {
+        likes: item.liked_count,
+        comments: null,
+        collects: null
+      },
+      tags: [],
+      collectedAt: item.captured_at,
+      _raw: item
+    };
+  }
+
+  function extractFromPageBridge() {
+    console.log('[router] Trying to extract from Page Bridge, items:', bridgeCollectedItems.length);
+    
+    if (bridgeCollectedItems.length > 0) {
+      return bridgeCollectedItems.map(convertBridgeItemToStandard);
+    }
+    return null;
+  }
+
   function extractCurrentPlatformContent() {
     const platform = getCurrentPlatform();
     console.log('[router] Extracting content for platform:', platform);
@@ -37,6 +70,12 @@
     switch (platform) {
       case PLATFORMS.XIAOHONGSHU:
         console.log('[router] Using XHS extractor');
+        const bridgeResult = extractFromPageBridge();
+        if (bridgeResult && bridgeResult.length > 0) {
+          console.log('[router] Using Page Bridge data, count:', bridgeResult.length);
+          return bridgeResult;
+        }
+        console.log('[router] Falling back to DOM extraction');
         return XHSExtractor.extract();
       case PLATFORMS.DOUYIN:
         console.log('[router] Using Douyin extractor');
@@ -81,6 +120,25 @@
         return false;
     }
   }
+
+  function handleBridgeMessage(event) {
+    if (event.data.source === 'xhs-smart-collection') {
+      console.log('[router] Received bridge message:', event.data.type);
+      
+      if (event.data.type === 'BRIDGE_READY') {
+        bridgeReady = true;
+        console.log('[router] Bridge ready, triggering scan...');
+        window.postMessage({ type: 'xhs-smart-collection:scan-now' }, '*');
+      } else if (event.data.type === 'INITIAL_SNAPSHOT' || 
+                 event.data.type === 'COLLECT_PAGE') {
+        const items = event.data.payload.items || [];
+        bridgeCollectedItems = bridgeCollectedItems.concat(items);
+        console.log('[router] Received items from bridge, total now:', bridgeCollectedItems.length);
+      }
+    }
+  }
+
+  window.addEventListener('message', handleBridgeMessage);
 
   const XHSExtractor = {
     extract: function() {

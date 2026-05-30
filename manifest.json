@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "xhs-smart-companion",
-  "version": "2.2.0",
-  "description": "多平台智能收藏夹助手 - 支持小红书和抖音，含桌面宠物",
+  "name": "Memora",
+  "version": "2.3.0",
+  "description": "Memora 智能收藏助手 - 提取、管理和导出多平台收藏内容",
   "permissions": [
     "activeTab",
     "storage",
@@ -10,11 +10,12 @@
   ],
   "host_permissions": [
     "https://www.xiaohongshu.com/*",
-    "https://www.douyin.com/*"
+    "https://www.douyin.com/*",
+    "https://dashscope.aliyuncs.com/*"
   ],
   "action": {
     "default_popup": "popup/popup.html",
-    "default_title": "Smart Companion"
+    "default_title": "Memora"
   },
   "side_panel": {
     "default_path": "sidepanel/sidepanel.html"
@@ -26,17 +27,31 @@
         "content/floating-pet.css"
       ],
       "js": [
+        "content/page-bridge.js",
         "shared/constants.js",
         "shared/utils.js",
+        "shared/qwen-config.js",
+        "shared/ai-tags.js",
         "platforms/douyin.js",
         "content/router.js",
         "content/floating-pet.js",
         "content/content.js"
       ],
-      "run_at": "document_end"
+      "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["content/page-bridge.js"],
+      "matches": ["https://www.xiaohongshu.com/*"]
     }
   ],
   "background": {
     "service_worker": "shared/background.js"
+  },
+  "icons": {
+    "16": "assets/icon16.png",
+    "48": "assets/icon48.png",
+    "128": "assets/icon128.png"
   }
 }
