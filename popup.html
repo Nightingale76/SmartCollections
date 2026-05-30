@@ -3,22 +3,23 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>小红书智能收藏夹</title>
+  <title>Memora 智能收藏助手</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="popup-container">
     <div class="header">
-      <h1>小红书收藏助手</h1>
+      <h1>Memora</h1>
+      <p>收藏即记忆</p>
     </div>
-    
+
     <div class="search-section">
-      <input type="text" id="searchInput" placeholder="搜索收藏...">
+      <input type="text" id="searchInput" placeholder="搜索收藏内容...">
       <select id="tagFilter">
         <option value="">全部标签</option>
       </select>
     </div>
-    
+
     <div class="actions">
       <button id="extractBtn">提取本页收藏</button>
       <button id="exportBtn">导出 Markdown</button>
@@ -29,12 +30,12 @@
     <div class="collection-list" id="collectionList">
       <p class="empty-hint">暂无收藏内容</p>
     </div>
-    
+
     <div class="footer">
       <span id="itemCount">共 0 条收藏</span>
     </div>
   </div>
-  
+
   <script src="qwen-config.js"></script>
   <script src="popup.js"></script>
 </body>
