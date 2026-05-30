@@ -19,6 +19,8 @@
   };
 
   const extractVideoCard = function(card) {
+    const AI_TAGS = window.MEMORA_AI_TAGS;
+    
     const item = {
       platform: 'douyin',
       id: null,
@@ -90,6 +92,16 @@
     });
     
     if (!item.id) return null;
+    
+    const textForTags = [
+      item.title,
+      item.author,
+      item.url
+    ].filter(Boolean).join(' ');
+    
+    item.tags = AI_TAGS && AI_TAGS.generateTags 
+      ? AI_TAGS.generateTags(textForTags) 
+      : ['其他'];
     
     return item;
   };

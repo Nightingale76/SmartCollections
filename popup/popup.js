@@ -35,6 +35,32 @@
     try {
       const result = await chrome.storage.local.get([STORAGE_KEYS.COLLECTIONS]);
       collections = result[STORAGE_KEYS.COLLECTIONS] || [];
+      
+      const AI_TAGS = window.MEMORA_AI_TAGS;
+      let needsUpdate = false;
+      
+      collections.forEach(item => {
+        if (!item.tags || item.tags.length === 0) {
+          if (AI_TAGS && AI_TAGS.generateTags) {
+            const textForTags = [
+              item.title,
+              item.author,
+              item.url
+            ].filter(Boolean).join(' ');
+            item.tags = AI_TAGS.generateTags(textForTags);
+          } else {
+            item.tags = ['其他'];
+          }
+          needsUpdate = true;
+        }
+      });
+      
+      if (needsUpdate) {
+        try {
+          await chrome.storage.local.set({ [STORAGE_KEYS.COLLECTIONS]: collections });
+        } catch (e) {}
+      }
+      
       renderCollections();
       updateTagFilter();
     } catch (e) {
