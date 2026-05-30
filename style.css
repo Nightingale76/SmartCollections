@@ -388,8 +388,177 @@ body.theme-bilibili {
     0 12px 26px rgba(124, 58, 237, 0.34);
 }
 
+.collection-workspace {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 10px;
+}
+
+.folder-sidebar {
+  width: 88px;
+  flex-shrink: 0;
+  min-height: 0;
+  padding-right: 8px;
+  border-right: 1px solid var(--divider);
+  display: flex;
+  flex-direction: column;
+}
+
+.folder-list {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow: auto;
+  padding-bottom: 8px; /* leave space for controls */
+}
+
+/* custom scrollbar for folder list */
+.folder-list::-webkit-scrollbar {
+  width: 8px;
+}
+.folder-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+.folder-list::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.06);
+  border-radius: 8px;
+  transition: background 0.18s;
+}
+.folder-list:hover::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.16);
+}
+
+.folder-controls {
+  display: none; /* hidden by default, shown in manage mode */
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+  margin-bottom: 6px;
+  position: sticky;
+  bottom: 8px;
+  background: transparent;
+  padding-top: 6px;
+}
+
+.manage-mode .folder-controls { display: flex; }
+
+.folder-controls input {
+  flex: 1;
+  height: 28px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  color: var(--text);
+  font-size: 12px;
+}
+
+.folder-edit-input {
+  width: calc(100% - 8px);
+  padding: 4px 8px;
+  font-size: 12px;
+  border-radius: 6px;
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  color: var(--text);
+}
+
+.folder-controls button {
+  height: 32px;
+  padding: 0 8px;
+  border-radius: 8px;
+  border: none;
+  background: var(--export-bg);
+  color: var(--button-text);
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.add-folder-btn { 
+  width: 36px;
+  height: 32px;
+  align-self: center;
+  padding: 0;
+  border-radius: 6px;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.collection-item[draggable="true"] { user-select: none; }
+.folder-btn.dragover { outline: 2px dashed rgba(0,194,194,0.5); }
+
+.folder-btn {
+  width: 100%;
+  min-height: 30px;
+  border: 1px solid var(--card-border);
+  border-radius: 9px;
+  background: var(--card-bg);
+  color: var(--muted);
+  font: inherit;
+  font-size: 10.5px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 0 7px;
+  transition: 0.18s;
+}
+
+.remove-folder {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.02);
+  color: var(--muted);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.manage-mode .folder-btn .remove-folder { display: inline-flex; }
+
+.folder-btn:hover,
+.folder-btn.active {
+  color: var(--title-text);
+  background: var(--card-bg-hover);
+  border-color: var(--card-border-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(0,0,0,0.18);
+  backdrop-filter: blur(8px);
+}
+
+.folder-btn:focus-visible {
+  outline: 2px solid rgba(255,255,255,0.06);
+  box-shadow: 0 10px 22px rgba(0,0,0,0.22);
+}
+
+.folder-btn.other {
+  margin-top: auto;
+}
+
+.folder-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folder-count {
+  flex-shrink: 0;
+  font-size: 9.5px;
+  color: var(--subtle);
+}
+
 .collection-list {
   flex: 1;
+  min-width: 0;
   min-height: 0;
   overflow-y: auto;
   display: flex;
@@ -404,6 +573,37 @@ body.theme-bilibili {
 .collection-list::-webkit-scrollbar-thumb {
   background: rgba(255,255,255,0.18);
   border-radius: 4px;
+}
+
+.collection-list:hover::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.28);
+}
+
+/* Styled select to avoid native arrow look */
+#tagFilter {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, rgba(255,255,255,0.9) 50%), linear-gradient(135deg, rgba(255,255,255,0.9) 50%, transparent 50%);
+  background-position: calc(100% - 14px) calc(50% - 3px), calc(100% - 10px) calc(50% - 3px);
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+  padding-right: 34px;
+  border-radius: 10px;
+  border: 1px solid var(--input-border);
+  height: 40px;
+  color: var(--text);
+  background-color: var(--input-bg);
+}
+
+#tagFilter:focus {
+  outline: none;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+}
+
+/* ensure the select remains styled in manage mode */
+.manage-mode #tagFilter {
+  border-color: var(--card-border-hover);
 }
 
 .empty-hint {
@@ -430,6 +630,11 @@ body.theme-bilibili {
   transform: translateY(-1px);
   background: var(--card-bg-hover);
   border-color: var(--card-border-hover);
+}
+
+.collection-item:focus-visible {
+  outline: 2px solid rgba(255,255,255,0.06);
+  box-shadow: 0 12px 26px rgba(0,0,0,0.22);
 }
 
 .collection-item .cover {
@@ -585,9 +790,20 @@ body.theme-bilibili {
   transition: 0.3s;
   z-index: 1000;
   border: 1px solid rgba(255,255,255,0.12);
+  display: inline-flex;
+  align-items: center;
 }
 
 .toast.show {
   opacity: 1;
+}
+
+.toast .toast-action {
+  margin-left: 10px;
+  background: transparent;
+  border: none;
+  color: var(--link, #00aaff);
+  cursor: pointer;
+  font-weight: 700;
 }
 

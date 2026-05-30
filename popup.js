@@ -1,6 +1,7 @@
 let collections = [];
 let searchTerm = '';
 let selectedTag = '';
+let selectedFolder = '';
 let manageMode = false;
 
 const THEME_STORAGE_KEY = 'memora_theme';
@@ -9,6 +10,42 @@ const XHS_LAST_COLLECTION_PAGES_KEY = 'xhs_last_collection_pages';
 
 const AI_CONFIG = window.SMART_COLLECTIONS_AI_CONFIG || {};
 const DEFAULT_TAG = '其他';
+const DEFAULT_FOLDER = '其他';
+const FOLDERS_KEY = 'memora_folders';
+
+// preset folders to include common categories for 小红书 / 抖音 (used as initial defaults)
+const PRESET_FOLDERS = ['美妆', '穿搭', '数码', '游戏', '旅游', '学习', '美食', '摄影', '家居', '健身', '音乐', '影视', '汽车', '母婴', '理财', '宠物', '手作', '情感'];
+
+// unified folders list (persisted). Initialize from storage or fall back to presets.
+let FOLDERS = [];
+// pending deletion (for undo)
+let pendingDeletedFolder = null; // { folder, itemIds, timeoutId }
+// inline editing state
+let editingFolder = null;
+
+async function loadFoldersFromStorage() {
+  try {
+    const res = await chrome.storage.local.get(FOLDERS_KEY);
+    const stored = res[FOLDERS_KEY];
+    if (Array.isArray(stored) && stored.length > 0) {
+      FOLDERS = stored.filter(Boolean).map(f => String(f).trim()).filter(Boolean);
+    } else {
+      // use presets as initial choices
+      FOLDERS = PRESET_FOLDERS.slice();
+    }
+  } catch (err) {
+    console.warn('loadFoldersFromStorage failed', err);
+    FOLDERS = PRESET_FOLDERS.slice();
+  }
+}
+
+async function saveFoldersToStorage() {
+  try {
+    await chrome.storage.local.set({ [FOLDERS_KEY]: FOLDERS });
+  } catch (err) {
+    console.warn('saveFoldersToStorage failed', err);
+  }
+}
 
 const TAG_RULES = [
   { tags: ['美食', '菜谱', '餐厅', '做饭', '烹饪', '甜点', '下午茶'], keywords: ['吃', '美食', '菜谱', '餐厅', '做饭', '烹饪', '甜点', '下午茶', '早餐', '午餐', '晚餐', '探店', '打卡', '食谱', '教程'] },
@@ -52,6 +89,62 @@ function generateTags(text) {
   return [...new Set(result)];
 }
 
+const FOLDER_RULES = [
+  { folder: '美妆', keywords: ['美妆', '护肤', '化妆', '口红', '粉底', '面膜', '精华', '眼霜', '防晒', '彩妆'] },
+  { folder: '穿搭', keywords: ['穿搭', '时尚', '衣服', '搭配', '女装', '男装', '鞋子', '包包', '配饰', '品牌'] },
+  { folder: '数码', keywords: ['数码', '手机', '电脑', '耳机', '相机', '测评', '开箱', '科技', 'ai', 'app', '软件', '算法', '编程'] },
+  { folder: '游戏', keywords: ['游戏', '手游', '主机', '电竞', '原神', '王者', 'steam', '攻略', '副本', '赛季'] },
+  { folder: '旅游', keywords: ['旅行', '旅游', '攻略', '景点', '酒店', '民宿', '周末', '假期', '出游', '自驾', '打卡'] },
+  { folder: '学习', keywords: ['学习', '读书', '书单', '考研', '备考', '考试', '高考', '英语', '笔记', '教程', '课程', '知识', '职场', '求职'] }
+];
+
+function normalizeFolder(folder, fallback = DEFAULT_FOLDER) {
+  const value = String(folder || '').replace(/^#/, '').trim();
+  if (!value) return fallback;
+
+  const synonymMap = {
+    护肤: '美妆',
+    彩妆: '美妆',
+    时尚: '穿搭',
+    科技: '数码',
+    软件: '数码',
+    教程: '学习',
+    教育: '学习',
+    考试: '学习',
+    旅行: '旅游',
+    攻略: '旅游'
+  };
+
+  const normalized = synonymMap[value] || value;
+  const combined = new Set(FOLDERS);
+  return combined.has(normalized) ? normalized : fallback;
+}
+
+function getLocalFolderForItem(item) {
+  const text = [
+    item.title,
+    item.author,
+    item.excerpt,
+    item.url,
+    ...(Array.isArray(item.tags) ? item.tags : [])
+  ].join(' ').toLowerCase();
+
+  for (const rule of FOLDER_RULES) {
+    if (rule.keywords.some(keyword => text.includes(keyword.toLowerCase()))) {
+      return rule.folder;
+    }
+  }
+
+  return DEFAULT_FOLDER;
+}
+
+function getLocalClassificationForItem(item) {
+  return {
+    folder: getLocalFolderForItem(item),
+    tags: getLocalTagsForItem(item)
+  };
+}
+
 function getAiEndpoint() {
   if (AI_CONFIG.endpoint) {
     return AI_CONFIG.endpoint;
@@ -61,25 +154,36 @@ function getAiEndpoint() {
   return `${baseUrl.replace(/\/$/, '')}/chat/completions`;
 }
 
-function buildClassificationPrompt(item) {
-  return [
-    '你是小红书收藏内容分类器。',
-    '只生成归档用的分类标签，不要生成标题，不要提取笔记自带话题标签。',
-    '请结合标题、可见文本、作者、链接和封面图判断。视频笔记也要根据封面和文字判断内容主题，不要因为是视频就放弃分类。',
-    '只输出 JSON，不要 Markdown，不要解释。',
-    '格式必须是 {"tags":["标签1","标签2","标签3"]}。',
-    '输出 2 到 5 个中文分类标签，每个标签 2 到 6 个字；如果信息很少，也至少输出 1 个最接近的分类。',
-    `只有完全无法判断时才输出 {"tags":["${DEFAULT_TAG}"]}。`,
-    '优先使用稳定分类，如：美食、旅行、穿搭、美妆、家居、装修、收纳、数码、健身、学习、摄影、职场、母婴、手作、理财、影视、音乐、游戏、宠物、汽车、艺术、情感、攻略、教程、清单、测评、素材、剪辑。',
+function buildClassificationPrompt(item, mode = 'full') {
+  // mode: 'full' (folder+tags), 'folder' (only folder), 'tags' (only tags)
+  const base = [
+    '你是一名面向小红书/抖音收藏内容的分类器。',
+    '请根据给定信息判断内容的一级收藏夹（folder）和/或若干话题标签（tags）。',
+    '如果内容同时涉及多个大分区，只选择一个最主要的 folder（非常重要），并把其他相关领域作为 tags 输出。',
+    '不要生成标题或解释，只输出严格的 JSON 对象。',
+    `只有完全无法判断 folder 时才使用 "${DEFAULT_FOLDER}"；只有完全无法判断 tags 时才输出 ["${DEFAULT_TAG}"]。`,
+    '话题标签优先使用稳定分类词汇，同时允许根据小红书/抖音市场流行话题扩展标签（例如配色、OOTD、二次元、开箱等）。',
     '避免泛标签：生活、分享、小红书、收藏、笔记、推荐。',
-    '',
-    `标题：${item.title || '无'}`,
-    `内容形态：${item.mediaType || '未知'}`,
-    `作者：${item.author || '无'}`,
-    `链接：${item.url || '无'}`,
-    `可见文本：${item.excerpt || '无'}`,
-    `是否有封面图：${item.cover ? '有' : '无'}`
-  ].join('\n');
+    ''
+  ];
+
+  if (mode === 'folder') {
+    base.push('仅输出 JSON: {"folder":"<一级分类>"}，folder 必须从这些选项中选择：美妆、穿搭、数码、游戏、旅游、学习、其他。');
+  } else if (mode === 'tags') {
+    base.push('仅输出 JSON: {"tags":["标签1","标签2"]}，输出 1 到 5 个中文话题标签，每个 2 到 6 个字。');
+  } else {
+    base.push('输出 JSON: {"folder":"学习","tags":["标签1","标签2","标签3"]}。folder 必须从这些选项中选择：美妆、穿搭、数码、游戏、旅游、学习、其他。');
+    base.push('输出 2 到 5 个中文话题标签，每个标签 2 到 6 个字；如果信息很少，也至少输出 1 个最接近的话题。');
+  }
+
+  base.push(`标题：${item.title || '无'}`);
+  base.push(`内容形态：${item.mediaType || '未知'}`);
+  base.push(`作者：${item.author || '无'}`);
+  base.push(`链接：${item.url || '无'}`);
+  base.push(`可见文本：${item.excerpt || '无'}`);
+  base.push(`是否有封面图：${item.cover ? '有' : '无'}`);
+
+  return base.join('\n');
 }
 
 function parseJsonObject(text) {
@@ -157,20 +261,34 @@ async function fetchWithTimeout(url, options, timeoutMs = AI_REQUEST_TIMEOUT_MS)
   }
 }
 
-async function generateClassificationTags(item, options = {}) {
-  const { includeImage = false } = options;
-  const localTags = getLocalTagsForItem(item);
+function normalizeClassification(parsed, item) {
+  const local = getLocalClassificationForItem(item);
+  const folder = normalizeFolder(parsed?.folder, local.folder);
+  const aiTags = removeDefaultTagWhenSpecific(parsed?.tags);
+  const tags = aiTags.length > 0 && !aiTags.includes(DEFAULT_TAG) ? aiTags : local.tags;
+
+  return {
+    folder: folder || local.folder,
+    tags
+  };
+}
+
+async function generateClassification(item, options = {}) {
+  // options: { includeImage, mode } where mode = 'full'|'folder'|'tags'
+  const { includeImage = false, mode = 'full' } = options;
+  const localClassification = getLocalClassificationForItem(item);
 
   if (!AI_CONFIG.apiKey) {
-    return localTags;
+    // fallback to local classification depending on mode
+    if (mode === 'folder') return { folder: localClassification.folder };
+    if (mode === 'tags') return { tags: localClassification.tags };
+    return localClassification;
   }
 
-  const content = [{ type: 'text', text: buildClassificationPrompt(item) }];
+  const prompt = buildClassificationPrompt(item, mode === 'folder' ? 'folder' : mode === 'tags' ? 'tags' : 'full');
+  const content = [{ type: 'text', text: prompt }];
   if (includeImage && item.cover) {
-    content.push({
-      type: 'image_url',
-      image_url: { url: item.cover }
-    });
+    content.push({ type: 'image_url', image_url: { url: item.cover } });
   }
 
   try {
@@ -182,12 +300,7 @@ async function generateClassificationTags(item, options = {}) {
       },
       body: JSON.stringify({
         model: AI_CONFIG.model || 'qwen-plus',
-        messages: [
-          {
-            role: 'user',
-            content
-          }
-        ],
+        messages: [ { role: 'user', content } ],
         temperature: 0.1,
         top_p: 0.8
       })
@@ -200,11 +313,24 @@ async function generateClassificationTags(item, options = {}) {
     const data = await response.json();
     const message = data?.choices?.[0]?.message?.content;
     const parsed = parseJsonObject(getMessageText(message));
-    const aiTags = removeDefaultTagWhenSpecific(parsed?.tags);
-    return aiTags.length > 0 && !aiTags.includes(DEFAULT_TAG) ? aiTags : localTags;
+
+    if (mode === 'folder') {
+      const folder = normalizeFolder(parsed?.folder, localClassification.folder);
+      return { folder };
+    }
+
+    if (mode === 'tags') {
+      const tags = ensureTags(parsed?.tags || localClassification.tags);
+      return { tags };
+    }
+
+    // full
+    return normalizeClassification(parsed, item);
   } catch (error) {
-    console.warn('AI classification failed, fallback to local tags:', error);
-    return localTags;
+    console.warn('AI classification failed, fallback to local classification:', error);
+    if (mode === 'folder') return { folder: localClassification.folder };
+    if (mode === 'tags') return { tags: localClassification.tags };
+    return localClassification;
   }
 }
 
@@ -222,11 +348,19 @@ function setClassificationStatus(message) {
 }
 
 async function applyClassificationTags(items, options = {}) {
-  const { includeImage = false, onItemDone } = options;
+  const { includeImage = false, onItemDone, mode = 'full' } = options;
 
   for (let index = 0; index < items.length; index += 1) {
     setClassificationStatus(`正在生成分类 ${index + 1}/${items.length}…`);
-    items[index].tags = await generateClassificationTags(items[index], { includeImage });
+    const classification = await generateClassification(items[index], { includeImage, mode: mode === 'folder-only' ? 'folder' : mode === 'tags-only' ? 'tags' : 'full' });
+
+    if (mode === 'folder-only' || mode === 'full') {
+      if (classification.folder) items[index].folder = normalizeFolder(classification.folder);
+    }
+
+    if (mode === 'tags-only' || mode === 'full') {
+      if (classification.tags) items[index].tags = ensureTags(classification.tags);
+    }
 
     if (typeof onItemDone === 'function') {
       await onItemDone(items[index], index, items.length);
@@ -236,28 +370,42 @@ async function applyClassificationTags(items, options = {}) {
   setClassificationStatus('');
 }
 
-function showToast(message) {
+function showToast(message, opts = {}) {
+  const { actionLabel, actionCallback, duration = (actionLabel ? 8000 : 2000) } = opts;
   const existingToast = document.querySelector('.toast');
-  if (existingToast) {
-    existingToast.remove();
-  }
-  
+  if (existingToast) existingToast.remove();
+
   const toast = document.createElement('div');
   toast.className = 'toast';
-  toast.textContent = message;
+  toast.innerHTML = `<span class="toast-msg"></span>`;
+  toast.querySelector('.toast-msg').textContent = message;
+
+  if (actionLabel && typeof actionCallback === 'function') {
+    const btn = document.createElement('button');
+    btn.className = 'toast-action';
+    btn.textContent = actionLabel;
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      try { actionCallback(); } catch (err) { console.error(err); }
+      toast.classList.remove('show');
+      setTimeout(() => toast.remove(), 200);
+    });
+    toast.appendChild(btn);
+  }
+
   document.body.appendChild(toast);
-  
   setTimeout(() => toast.classList.add('show'), 10);
   setTimeout(() => {
     toast.classList.remove('show');
     setTimeout(() => toast.remove(), 300);
-  }, 2000);
+  }, duration);
 }
 
 async function loadCollections() {
   const result = await chrome.storage.local.get('xhs_collections');
   collections = (result.xhs_collections || []).map(item => ({
     ...item,
+    folder: normalizeFolder(item.folder || getLocalFolderForItem(item)),
     tags: ensureTags(item.tags)
   }));
   await chrome.storage.local.set({ xhs_collections: collections });
@@ -326,8 +474,206 @@ function updateTagFilter() {
   });
 }
 
+function getFolderCounts() {
+  return collections.reduce((counts, item) => {
+    const folder = normalizeFolder(item.folder || getLocalFolderForItem(item));
+    counts.set(folder, (counts.get(folder) || 0) + 1);
+    return counts;
+  }, new Map());
+}
+
+function renderFolders() {
+  const folderList = document.getElementById('folderList');
+  if (!folderList) return;
+  const counts = getFolderCounts();
+  // build buttons: All, then user-created folders, then preset folders that have items, then Other
+  const folderButtons = [ { folder: '', label: '全部收藏', count: collections.length, className: 'all' } ];
+
+  // show all folders from unified FOLDERS list
+  for (const folder of FOLDERS) {
+    if (folder === DEFAULT_FOLDER) continue; // always render DEFAULT_FOLDER at end
+    const count = counts.get(folder) || 0;
+    folderButtons.push({ folder, label: folder, count, className: '' });
+  }
+
+  // ensure default folder present at bottom
+  folderButtons.push({ folder: DEFAULT_FOLDER, label: DEFAULT_FOLDER, count: counts.get(DEFAULT_FOLDER) || 0, className: 'other' });
+
+  folderList.innerHTML = folderButtons.map(item => `
+    <button class="folder-btn ${item.className} ${selectedFolder === item.folder ? 'active' : ''}" type="button" data-folder="${escapeHtml(item.folder)}">
+      ${editingFolder === item.folder ? (`<input class="folder-edit-input" data-old="${escapeHtml(item.folder)}" value="${escapeHtml(item.label)}">`) : (`<span class="folder-name">${escapeHtml(item.label)}</span>`)}
+      <span class="folder-count">${item.count}</span>
+      <button class="remove-folder" data-folder="${escapeHtml(item.folder)}" title="删除收藏夹">✕</button>
+    </button>
+  `).join('');
+
+  // attach drag/drop handlers to folder buttons
+  folderList.querySelectorAll('.folder-btn').forEach(btn => {
+    btn.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      btn.classList.add('dragover');
+    });
+    btn.addEventListener('dragleave', () => btn.classList.remove('dragover'));
+    btn.addEventListener('drop', (e) => {
+      e.preventDefault();
+      btn.classList.remove('dragover');
+      const folder = btn.dataset.folder || '';
+      const id = e.dataTransfer.getData('text/plain');
+      if (!id) return;
+      const idx = collections.findIndex(i => String(i.id) === String(id));
+      if (idx === -1) return;
+      collections[idx].folder = folder || DEFAULT_FOLDER;
+      saveCollectionsAndRender();
+      showToast('已移动收藏到 ' + (folder || '全部收藏'));
+    });
+  });
+
+  // attach remove-folder handlers
+  folderList.querySelectorAll('.remove-folder').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const folder = btn.dataset.folder;
+      if (!folder) return;
+      if (folder === DEFAULT_FOLDER) { showToast('无法删除默认分区'); return; }
+      if (!confirm(`确认删除收藏夹 “${folder}”？被删除的分类不会删除收藏内容，但会将未移动的条目归为“${DEFAULT_FOLDER}”。`)) return;
+      removeFolder(folder);
+    });
+  });
+
+  // in manage mode, enable double-click rename on folder buttons
+  folderList.querySelectorAll('.folder-btn').forEach(btn => {
+    btn.addEventListener('dblclick', (e) => {
+      if (!manageMode) return;
+      const folder = btn.dataset.folder;
+      if (!folder || folder === DEFAULT_FOLDER) return;
+      editingFolder = folder;
+      renderFolders();
+      // focus the input
+      const input = folderList.querySelector('.folder-edit-input');
+      if (input) {
+        input.focus();
+        input.setSelectionRange(0, input.value.length);
+      }
+    });
+  });
+
+  // bind inline edit events
+  folderList.querySelectorAll('.folder-edit-input').forEach(input => {
+    const oldName = input.dataset.old;
+    const commit = async () => {
+      const v = String(input.value || '').trim();
+      editingFolder = null;
+      if (!v || v === oldName) { renderFolders(); return; }
+      await renameFolder(oldName, v);
+    };
+    input.addEventListener('keydown', async (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        await commit();
+      } else if (e.key === 'Escape') {
+        editingFolder = null;
+        renderFolders();
+      }
+    });
+    input.addEventListener('blur', () => commit());
+  });
+}
+
+async function addFolder(name) {
+  const n = String(name || '').trim();
+  if (!n) return;
+  const combined = new Set(FOLDERS);
+  if (combined.has(n) || n === DEFAULT_FOLDER) {
+    showToast('收藏夹已存在');
+    return;
+  }
+  FOLDERS.push(n);
+  await saveFoldersToStorage();
+  renderFolders();
+}
+
+async function removeFolder(name) {
+  const n = String(name || '').trim();
+  if (!n) return;
+
+  // backup affected items for undo
+  const affectedIds = collections.filter(item => normalizeFolder(item.folder) === n).map(i => i.id);
+
+  // remove folder from list and move items to default
+  FOLDERS = (FOLDERS || []).filter(f => f !== n);
+  collections.forEach(item => {
+    if (normalizeFolder(item.folder) === n) item.folder = DEFAULT_FOLDER;
+  });
+
+  await saveFoldersToStorage();
+  await chrome.storage.local.set({ xhs_collections: collections });
+  renderCollections();
+  updateTagFilter();
+
+  // set pending delete to allow undo
+  if (pendingDeletedFolder && pendingDeletedFolder.timeoutId) {
+    clearTimeout(pendingDeletedFolder.timeoutId);
+  }
+  pendingDeletedFolder = {
+    folder: n,
+    itemIds: affectedIds,
+    timeoutId: setTimeout(() => {
+      pendingDeletedFolder = null;
+      showToast('已永久删除');
+    }, 8000)
+  };
+
+  showToast(`已删除收藏夹：${n}`, { actionLabel: '撤销', actionCallback: undoDelete, duration: 8000 });
+}
+
+function undoDelete() {
+  if (!pendingDeletedFolder) return;
+  const { folder, itemIds, timeoutId } = pendingDeletedFolder;
+  if (timeoutId) clearTimeout(timeoutId);
+
+  // restore folder if not exists
+  if (!FOLDERS.includes(folder)) FOLDERS.push(folder);
+
+  // move items back
+  collections.forEach(item => {
+    if (itemIds.includes(item.id)) item.folder = folder;
+  });
+
+  pendingDeletedFolder = null;
+  saveFoldersToStorage();
+  chrome.storage.local.set({ xhs_collections: collections });
+  renderCollections();
+  updateTagFilter();
+  showToast('已撤销删除');
+}
+
+async function renameFolder(oldName, newName) {
+  const o = String(oldName || '').trim();
+  const n = String(newName || '').trim();
+  if (!o || !n) return;
+  if (FOLDERS.includes(n)) {
+    showToast('目标名称已存在');
+    return;
+  }
+  FOLDERS = FOLDERS.map(f => (f === o ? n : f));
+  // update item folders
+  collections.forEach(item => {
+    if (normalizeFolder(item.folder) === o) item.folder = n;
+  });
+  await saveFoldersToStorage();
+  await chrome.storage.local.set({ xhs_collections: collections });
+  renderCollections();
+  updateTagFilter();
+}
+
 function filterCollections() {
   let filtered = collections;
+
+  if (selectedFolder) {
+    filtered = filtered.filter(item =>
+      normalizeFolder(item.folder || getLocalFolderForItem(item)) === selectedFolder
+    );
+  }
   
   if (searchTerm) {
     const term = searchTerm.toLowerCase();
@@ -348,11 +694,12 @@ function filterCollections() {
 
 function renderCollections() {
   const list = document.getElementById('collectionList');
+  renderFolders();
   const filtered = filterCollections();
   
   if (filtered.length === 0) {
     list.innerHTML = '<p class="empty-hint">暂无收藏内容</p>';
-    document.getElementById('itemCount').textContent = `共 0 条收藏`;
+    document.getElementById('itemCount').textContent = collections.length ? `共 0/${collections.length} 条收藏` : '共 0 条收藏';
     return;
   }
   
@@ -368,7 +715,7 @@ function renderCollections() {
     const addBtn = manageMode ? `<button class="tag-add" data-item-id="${escapeHtml(item.id)}">+</button>` : '';
 
     return `
-    <div class="collection-item ${manageMode ? 'manage-mode' : ''}" data-id="${escapeHtml(item.id)}" data-url="${escapeHtml(item.url || '')}" data-dom-index="${Number.isInteger(item.domIndex) ? item.domIndex : ''}" title="${item.url ? 'Open original' : ''}">
+    <div draggable="true" class="collection-item ${manageMode ? 'manage-mode' : ''}" data-id="${escapeHtml(item.id)}" data-url="${escapeHtml(item.url || '')}" data-dom-index="${Number.isInteger(item.domIndex) ? item.domIndex : ''}" title="${item.url ? 'Open original' : ''}">
       ${item.cover ? `<img src="${item.cover}" class="cover" alt="封面">` : ''}
       <div class="info">
         <div class="title">${escapeHtml(item.title) || '无标题'}</div>
@@ -387,8 +734,20 @@ function renderCollections() {
     </div>
   `;
   }).join('');
+
+  // attach dragstart listeners so items can be moved into folders
+  list.querySelectorAll('.collection-item').forEach(el => {
+    el.addEventListener('dragstart', (e) => {
+      const id = el.dataset.id;
+      if (!id) return;
+      e.dataTransfer.setData('text/plain', String(id));
+      try { e.dataTransfer.effectAllowed = 'move'; } catch (err) {}
+    });
+  });
   
-  document.getElementById('itemCount').textContent = `共 ${collections.length} 条收藏`;
+  document.getElementById('itemCount').textContent = filtered.length === collections.length
+    ? `共 ${collections.length} 条收藏`
+    : `共 ${filtered.length}/${collections.length} 条收藏`;
 }
 
 async function saveCollectionsAndRender() {
@@ -693,6 +1052,7 @@ function mergeExtractedCollections(extractedItems) {
       collections[existingIndex] = {
         ...existing,
         ...item,
+        folder: normalizeFolder(existing.folder || item.folder || getLocalFolderForItem(item)),
         tags: ensureTags(existing.tags)
       };
       return;
@@ -700,6 +1060,7 @@ function mergeExtractedCollections(extractedItems) {
 
     const nextItem = {
       ...item,
+      folder: normalizeFolder(item.folder || getLocalFolderForItem(item)),
       tags: getLocalTagsForItem(item)
     };
     existingIndexByKey.set(key, collections.length);
@@ -735,20 +1096,57 @@ async function extractCollections() {
       const appendedItems = mergeExtractedCollections(response.data);
 
       await chrome.storage.local.set({ xhs_collections: collections });
-      renderCollections();
-      updateTagFilter();
-      showToast(`已提取 ${collections.length} 条，正在后台生成分类…`);
+      // classify: first determine folder for all newly fetched items, then generate tags one-by-one
+      const toClassify = appendedItems.length ? appendedItems : collections;
+      if (toClassify.length > 0) {
+        showToast(`已提取 ${collections.length} 条，正在后台生成主分类…`);
+        // bulk folder-only pass
+        await applyClassificationTags(toClassify, { includeImage: false, mode: 'folder-only' });
 
-      await applyClassificationTags(appendedItems, {
-        includeImage: false,
-        onItemDone: async () => {
-          await chrome.storage.local.set({ xhs_collections: collections });
-          renderCollections();
-          updateTagFilter();
+        // After folder-only pass: auto-create user folders if AI assigned new dominant folders
+        const countsAfter = getFolderCounts();
+        const combinedBefore = new Set(FOLDERS);
+        const toAdd = [];
+        // threshold: at least 2 items or >=5% of all collections
+        const thresholdCount = Math.max(2, Math.ceil(collections.length * 0.05));
+        for (const [folder, cnt] of countsAfter.entries()) {
+          if (!folder) continue;
+          if (folder === DEFAULT_FOLDER) continue;
+          if (combinedBefore.has(folder)) continue;
+          if (cnt >= thresholdCount) {
+            toAdd.push(folder);
+          }
         }
-      });
 
-      showToast(`完成：共 ${collections.length} 条收藏`);
+        if (toAdd.length > 0) {
+          toAdd.forEach(f => { if (!FOLDERS.includes(f)) FOLDERS.push(f); });
+          await saveFoldersToStorage();
+          showToast('已根据收藏习惯创建收藏夹：' + toAdd.join(', '));
+        }
+
+        // persist and render after folders assigned
+        await chrome.storage.local.set({ xhs_collections: collections });
+        renderCollections();
+        updateTagFilter();
+
+        // then generate tags one-by-one, updating UI per item
+        await applyClassificationTags(toClassify, {
+          includeImage: false,
+          mode: 'tags-only',
+          onItemDone: async () => {
+            await chrome.storage.local.set({ xhs_collections: collections });
+            renderCollections();
+            updateTagFilter();
+          }
+        });
+
+        showToast(`完成：共 ${collections.length} 条收藏`);
+      } else {
+        // nothing to classify
+        renderCollections();
+        updateTagFilter();
+        showToast(`已提取 ${collections.length} 条`);
+      }
     } else {
       if (response?.debug) {
         console.info('XHS extraction debug:', response.debug);
@@ -792,6 +1190,7 @@ function exportMarkdown() {
     if (item.url) {
       markdown += `- **链接**: [查看原文](${item.url})\n`;
     }
+    markdown += `- **收藏夹**: ${normalizeFolder(item.folder || getLocalFolderForItem(item))}\n`;
     if (item.cover) {
       markdown += `- **封面**: ![](${item.cover})\n`;
     }
@@ -821,9 +1220,32 @@ async function removeCollection(id) {
   showToast('已删除');
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   initThemeSwitcher();
-  loadCollections();
+  await loadFoldersFromStorage();
+  await loadCollections();
+
+  // folder add controls
+  const addInput = document.getElementById('addFolderInput');
+  const addBtn = document.getElementById('addFolderBtn');
+  if (addBtn && addInput) {
+    addBtn.addEventListener('click', async () => {
+      const v = addInput.value.trim();
+      if (v) {
+        await addFolder(v);
+        addInput.value = '';
+      }
+    });
+    addInput.addEventListener('keydown', async (e) => {
+      if (e.key === 'Enter') {
+        const v = addInput.value.trim();
+        if (v) {
+          await addFolder(v);
+          addInput.value = '';
+        }
+      }
+    });
+  }
   
   document.getElementById('extractBtn').addEventListener('click', extractCollections);
   document.getElementById('exportBtn').addEventListener('click', exportMarkdown);
@@ -831,6 +1253,13 @@ document.addEventListener('DOMContentLoaded', () => {
     manageMode = !manageMode;
     document.getElementById('manageBtn').textContent = manageMode ? '完成' : '管理';
     document.body.classList.toggle('manage-mode', manageMode);
+    renderCollections();
+  });
+  document.getElementById('folderList').addEventListener('click', (event) => {
+    const folderButton = event.target.closest('[data-folder]');
+    if (!folderButton) return;
+
+    selectedFolder = folderButton.dataset.folder || '';
     renderCollections();
   });
   document.getElementById('collectionList').addEventListener('click', (event) => {

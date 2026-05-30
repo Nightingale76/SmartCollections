@@ -39,8 +39,18 @@
 
     <p id="classificationStatus" class="classification-status" hidden></p>
 
-    <div class="collection-list" id="collectionList">
-      <p class="empty-hint">暂无收藏内容</p>
+    <div class="collection-workspace">
+      <nav class="folder-sidebar" aria-label="收藏夹">
+        <div class="folder-list" id="folderList"></div>
+        <div class="folder-controls">
+          <input id="addFolderInput" type="text" placeholder="新建收藏夹">
+          <button id="addFolderBtn" type="button" class="add-folder-btn">+</button>
+        </div>
+      </nav>
+
+      <div class="collection-list" id="collectionList">
+        <p class="empty-hint">暂无收藏内容</p>
+      </div>
     </div>
 
     <div class="footer">
