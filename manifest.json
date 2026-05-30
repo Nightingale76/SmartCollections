@@ -2,13 +2,14 @@
   "manifest_version": 3,
   "name": "xhs-smart-collection",
   "version": "1.0.1",
-  "description": "小红书智能收藏夹助手 - 提取、管理和导出收藏内容",
+  "description": "智能收藏夹助手 - 提取、管理和导出收藏内容",
   "permissions": [
     "activeTab",
     "storage"
   ],
   "host_permissions": [
     "https://www.xiaohongshu.com/*",
+    "https://www.douyin.com/*",
     "https://dashscope.aliyuncs.com/*"
   ],
   "action": {
@@ -21,7 +22,10 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://www.xiaohongshu.com/*"],
+      "matches": [
+        "https://www.xiaohongshu.com/*",
+        "https://www.douyin.com/*"
+      ],
       "js": ["content.js"],
       "run_at": "document_start"
     }
