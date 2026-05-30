@@ -1,0 +1,18 @@
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# System files
+Thumbs.db
+
+# Node (if any)
+node_modules/
+package-lock.json
