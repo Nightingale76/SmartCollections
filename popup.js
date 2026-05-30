@@ -470,6 +470,15 @@ function escapeHtml(text) {
 
 async function openCollection(url, domIndex) {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  // If the item is a Douyin link, open it directly in a new tab.
+  if (typeof url === 'string' && url.includes('douyin.com')) {
+    try {
+      await chrome.tabs.create({ url });
+      return;
+    } catch (err) {
+      console.warn('open douyin url failed:', err);
+    }
+  }
 
   // If current tab is xiaohongshu, prefer in-page open by sending message to content script.
   const isXhs = String(tab?.url || '').includes('xiaohongshu.com');
