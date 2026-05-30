@@ -110,6 +110,63 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     const opened = openCollectionCard(request.domIndex);
     sendResponse({ success: opened });
   }
+
+  if (request.action === 'openCollectionUrl') {
+    const url = String(request.url || '');
+    if (!url) {
+      sendResponse({ success: false });
+      return;
+    }
+
+    // Try to locate a link or card that matches the url or note id and dispatch click
+    try {
+      const noteIdMatch = url.match(/\/(?:explore|note|discovery\/item)\/([^/?#]+)/);
+      const noteId = noteIdMatch ? noteIdMatch[1] : null;
+
+      // Find exact link first
+      let target = Array.from(document.querySelectorAll('a[href]')).find(a => a.href === url || a.href === url + '/' );
+
+      if (!target && noteId) {
+        // try links that contain note id
+        target = Array.from(document.querySelectorAll('a[href]')).find(a => (a.href || '').includes(noteId));
+      }
+
+      if (target) {
+        // get the card element for the link and click the card to avoid direct anchor navigation
+        const card = getCardFromLink(target) || target;
+        let clickable = card;
+        try {
+          const candidates = Array.from(card.querySelectorAll('button, [role="button"], [role="link"], a'));
+          const nonAnchor = candidates.find(el => el.tagName !== 'A');
+          if (nonAnchor) clickable = nonAnchor;
+        } catch (e) {
+          clickable = card;
+        }
+
+        dispatchMouseClickAt(clickable);
+        sendResponse({ success: true });
+        return;
+      }
+
+      // Fallback: try to find a card element with matching data-note-id
+      if (noteId) {
+        const card = document.querySelector(`[data-note-id="${noteId}"], [data-id="${noteId}"]`);
+        if (card) {
+          const clickable = card.querySelector('a, button, [role="link"], [role="button"]') || card;
+          dispatchMouseClickAt(clickable);
+          sendResponse({ success: true });
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn('openCollectionUrl error', err);
+    }
+
+    sendResponse({ success: false });
+    return;
+  }
+
+  
 });
 
 async function extractCollectionsFromPage() {
@@ -412,6 +469,46 @@ function dedupeCollections(collections) {
   });
 }
 
+function dispatchMouseClickAt(el) {
+  if (!el) return;
+
+  try {
+    if (el.scrollIntoView) {
+      el.scrollIntoView({ block: 'center', inline: 'center', behavior: 'auto' });
+    }
+  } catch (e) {}
+
+  const rect = el.getBoundingClientRect();
+  const cx = Math.max(1, Math.round(rect.left + rect.width / 2));
+  const cy = Math.max(1, Math.round(rect.top + rect.height / 2));
+
+  const target = document.elementFromPoint(cx, cy) || el;
+
+  const makeInit = (type) => ({
+    bubbles: true,
+    cancelable: true,
+    view: window,
+    clientX: cx,
+    clientY: cy,
+    screenX: (window.screenX || 0) + cx,
+    screenY: (window.screenY || 0) + cy
+  });
+
+  try {
+    if (window.PointerEvent) {
+      target.dispatchEvent(new PointerEvent('pointerdown', makeInit('pointerdown')));
+    }
+    target.dispatchEvent(new MouseEvent('mousedown', makeInit('mousedown')));
+    target.dispatchEvent(new MouseEvent('mouseup', makeInit('mouseup')));
+    target.dispatchEvent(new MouseEvent('click', makeInit('click')));
+    if (window.PointerEvent) {
+      target.dispatchEvent(new PointerEvent('pointerup', makeInit('pointerup')));
+    }
+  } catch (err) {
+    try { target.click(); } catch (e) {}
+  }
+}
+
 function normalizeText(text) {
   return String(text || '').replace(/\s+/g, '').trim();
 }
@@ -556,14 +653,20 @@ function openCollectionCard(domIndex) {
     return false;
   }
 
-  const clickable = card.querySelector('a, button, [role="link"], [role="button"]') || card;
-  ['pointerdown', 'mousedown', 'mouseup', 'click'].forEach(type => {
-    clickable.dispatchEvent(new MouseEvent(type, {
-      bubbles: true,
-      cancelable: true,
-      view: window
-    }));
-  });
+  // Prefer dispatching events on the card element itself to mimic manual click
+  // and avoid triggering native <a> navigation when possible.
+  let clickable = card;
+  try {
+    const candidates = Array.from(card.querySelectorAll('button, [role="button"], [role="link"], a'));
+    // prefer non-anchor elements
+    const nonAnchor = candidates.find(el => el.tagName !== 'A');
+    if (nonAnchor) clickable = nonAnchor;
+  } catch (e) {
+    clickable = card;
+  }
+
+  // Dispatch events at the element's center coordinates to better mimic a real user click
+  dispatchMouseClickAt(clickable);
 
   return true;
 }

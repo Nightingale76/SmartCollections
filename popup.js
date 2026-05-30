@@ -335,7 +335,6 @@ function renderCollections() {
           ${tagsHtml}${addBtn}
         </div>
       </div>
-      <button class="remove-btn" onclick="removeCollection('${item.id}')">×</button>
     </div>
   `;
   }).join('');
@@ -472,37 +471,30 @@ function escapeHtml(text) {
 async function openCollection(url, domIndex) {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
-  if (url) {
+  // If current tab is xiaohongshu, prefer in-page open by sending message to content script.
+  const isXhs = String(tab?.url || '').includes('xiaohongshu.com');
+
+  if (isXhs) {
     try {
-      // open in the current tab instead of creating a new one
-      await chrome.tabs.update(tab.id, { url });
-      return;
-    } catch (e) {
-      // fallback to creating a tab
-      try { chrome.tabs.create({ url }); } catch (_) {}
-      return;
+      if (Number.isInteger(domIndex)) {
+        const response = await chrome.tabs.sendMessage(tab.id, { action: 'openCollectionCard', domIndex });
+        if (response?.success) return;
+      }
+
+      if (url) {
+        // try to ask content script to find and click matching link in page
+        const response = await chrome.tabs.sendMessage(tab.id, { action: 'openCollectionUrl', url });
+        if (response?.success) return;
+      }
+    } catch (err) {
+      console.warn('page open message failed:', err);
     }
   }
 
-  if (!Number.isInteger(domIndex)) {
-    showToast('No URL');
-    return;
-  }
-
-  try {
-    const response = await chrome.tabs.sendMessage(tab.id, {
-      action: 'openCollectionCard',
-      domIndex
-    });
-
-    if (!response?.success) {
-      showToast('Open failed');
-    }
-  } catch (err) {
-    console.warn('sendMessage failed:', err);
-    showToast('打开失败，页面可能未加载或不在小红书');
-  }
+  // If we reach here, page-side open failed — do NOT navigate. Notify user instead.
+  showToast('无法在当前页面内唤起笔记，请在小红书页面手动点击对应卡片或刷新收藏页');
 }
+
 
 async function extractCollections() {
   const extractBtn = document.getElementById('extractBtn');

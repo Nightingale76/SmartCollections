@@ -269,29 +269,7 @@ body {
   width: auto;
 }
 
-.collection-item .remove-btn {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 20px;
-  height: 20px;
-  border: none;
-  background: rgba(230, 57, 70, 0.1);
-  border-radius: 50%;
-  color: #e63946;
-  font-size: 12px;
-  cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.2s;
-}
 
-.collection-item:hover .remove-btn {
-  opacity: 1;
-}
-
-.collection-item .remove-btn:hover {
-  background: rgba(230, 57, 70, 0.2);
-}
 
 .footer {
   text-align: center;
@@ -322,3 +300,4 @@ body {
 .toast.show {
   opacity: 1;
 }
+
