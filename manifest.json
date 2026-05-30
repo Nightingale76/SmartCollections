@@ -1,0 +1,37 @@
+{
+  "manifest_version": 3,
+  "name": "xhs-smart-companion",
+  "version": "2.0.0",
+  "description": "小红书智能收藏夹助手 - 侧边栏知识库 + AI 宠物陪伴",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "sidePanel"
+  ],
+  "host_permissions": [
+    "https://www.xiaohongshu.com/*"
+  ],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "XHS Smart Companion"
+  },
+  "side_panel": {
+    "default_path": "sidepanel/sidepanel.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.xiaohongshu.com/*"],
+      "js": ["content/content.js"],
+      "css": ["content/content.css"],
+      "run_at": "document_end"
+    }
+  ],
+  "background": {
+    "service_worker": "shared/background.js"
+  },
+  "icons": {
+    "16": "assets/icon16.png",
+    "48": "assets/icon48.png",
+    "128": "assets/icon128.png"
+  }
+}

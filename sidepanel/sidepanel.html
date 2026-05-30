@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>XHS 知识库</title>
+  <link rel="stylesheet" href="../assets/glass.css">
+  <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+  <div class="sidepanel-container">
+    <aside class="sidebar glass-card">
+      <div class="sidebar-header">
+        <div class="logo">
+          <span class="logo-icon">✨</span>
+          <h1>知识库</h1>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-view="all">
+          <span class="nav-icon">📚</span>
+          <span class="nav-text">全部收藏</span>
+          <span class="nav-badge" id="allBadge">0</span>
+        </button>
+        <button class="nav-item" data-view="byTag">
+          <span class="nav-icon">🏷️</span>
+          <span class="nav-text">按标签</span>
+        </button>
+        <button class="nav-item" data-view="stats">
+          <span class="nav-icon">📊</span>
+          <span class="nav-text">统计数据</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="pet-status-card glass-card">
+          <div class="pet-avatar">🐱</div>
+          <div class="pet-info">
+            <span class="pet-name">小 X</span>
+            <span class="pet-mood" id="petMood">心情愉悦</span>
+          </div>
+        </div>
+        <div class="quick-actions">
+          <button id="exportAllBtn" class="quick-btn">
+            <span>📤</span> 导出全部
+          </button>
+          <button id="clearAllBtn" class="quick-btn danger">
+            <span>🗑️</span> 清空
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="content-header glass-card">
+        <div class="search-box">
+          <input type="text" id="searchInput" class="glass-input" placeholder="🔍 搜索收藏标题或作者...">
+        </div>
+        <div class="filter-controls">
+          <select id="tagFilter" class="glass-select">
+            <option value="">全部标签</option>
+          </select>
+          <select id="sortOrder" class="glass-select">
+            <option value="newest">最新优先</option>
+            <option value="oldest">最旧优先</option>
+            <option value="title">标题排序</option>
+          </select>
+        </div>
+      </header>
+
+      <div class="view-container scrollbar-thin" id="viewContainer">
+        <div class="empty-state" id="emptyState">
+          <div class="empty-icon">📭</div>
+          <p>暂无收藏内容</p>
+          <small>在小红书收藏页面点击插件图标提取收藏</small>
+        </div>
+
+        <div class="collection-grid" id="collectionGrid"></div>
+
+        <div class="stats-view" id="statsView" style="display: none;">
+          <div class="stats-cards">
+            <div class="stat-card glass-card">
+              <div class="stat-icon">📚</div>
+              <div class="stat-info">
+                <span class="stat-value" id="totalCount">0</span>
+                <span class="stat-label">总收藏数</span>
+              </div>
+            </div>
+            <div class="stat-card glass-card">
+              <div class="stat-icon">🏷️</div>
+              <div class="stat-info">
+                <span class="stat-value" id="totalTags">0</span>
+                <span class="stat-label">标签种类</span>
+              </div>
+            </div>
+            <div class="stat-card glass-card">
+              <div class="stat-icon">👤</div>
+              <div class="stat-info">
+                <span class="stat-value" id="totalAuthors">0</span>
+                <span class="stat-label">作者数量</span>
+              </div>
+            </div>
+          </div>
+          <div class="tag-cloud glass-card">
+            <h3>标签分布</h3>
+            <div class="cloud-content" id="tagCloud"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="sidepanel.js" type="module"></script>
+</body>
+</html>

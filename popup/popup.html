@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>XHS Smart Companion</title>
+  <link rel="stylesheet" href="../assets/glass.css">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <header class="glass-card header-section">
+      <div class="header-content">
+        <div class="logo">
+          <span class="logo-icon">✨</span>
+          <h1>XHS Companion</h1>
+        </div>
+        <div class="mode-indicator" id="modeIndicator">
+          <span class="mode-dot"></span>
+          <span class="mode-text">陪伴模式</span>
+        </div>
+      </div>
+    </header>
+
+    <div class="search-section glass-card">
+      <input type="text" id="searchInput" class="glass-input" placeholder="🔍 搜索收藏...">
+      <select id="tagFilter" class="glass-select">
+        <option value="">全部标签</option>
+      </select>
+    </div>
+
+    <div class="actions-grid glass-card">
+      <button id="extractBtn" class="action-btn primary">
+        <span class="action-icon">📥</span>
+        <span class="action-text">提取收藏</span>
+      </button>
+      <button id="generateTagsBtn" class="action-btn secondary">
+        <span class="action-icon">🏷️</span>
+        <span class="action-text">生成标签</span>
+      </button>
+      <button id="exportBtn" class="action-btn tertiary">
+        <span class="action-icon">📤</span>
+        <span class="action-text">导出MD</span>
+      </button>
+      <button id="openPanelBtn" class="action-btn quaternary">
+        <span class="action-icon">📚</span>
+        <span class="action-text">知识库</span>
+      </button>
+    </div>
+
+    <div class="settings-section glass-card">
+      <h3 class="section-title">陪伴模式</h3>
+      <div class="mode-buttons">
+        <button class="mode-btn" data-mode="quiet">
+          <span>🤫</span>
+          <span>安静</span>
+        </button>
+        <button class="mode-btn active" data-mode="companion">
+          <span>🤗</span>
+          <span>陪伴</span>
+        </button>
+        <button class="mode-btn" data-mode="active">
+          <span>🎉</span>
+          <span>活跃</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="collection-list scrollbar-thin" id="collectionList">
+      <div class="empty-state">
+        <div class="empty-icon">📭</div>
+        <p>暂无收藏内容</p>
+        <small>点击「提取收藏」开始</small>
+      </div>
+    </div>
+
+    <footer class="footer glass-card">
+      <span id="itemCount">共 0 条收藏</span>
+      <span class="footer-divider">|</span>
+      <span id="petStatus">🐱 待机中</span>
+    </footer>
+  </div>
+
+  <script src="popup.js" type="module"></script>
+</body>
+</html>
