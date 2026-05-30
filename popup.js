@@ -499,9 +499,10 @@ async function openCollection(url, domIndex) {
 async function extractCollections() {
   const extractBtn = document.getElementById('extractBtn');
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  
-  if (!tab.url.includes('xiaohongshu.com')) {
-    showToast('请在小红书页面使用');
+
+  const supportedSites = ['xiaohongshu.com', 'douyin.com'];
+  if (!supportedSites.some(site => tab.url.includes(site))) {
+    showToast('请在支持的平台页面使用');
     return;
   }
 
@@ -571,7 +572,7 @@ function exportMarkdown() {
   }
   
   const filtered = filterCollections();
-  let markdown = `# 小红书收藏夹\n\n`;
+  let markdown = `# Memora 收藏知识库\n\n`;
   markdown += `> 共 ${filtered.length} 条收藏 | 导出时间: ${new Date().toLocaleString('zh-CN')}\n\n`;
   
   filtered.forEach((item, index) => {
@@ -596,7 +597,7 @@ function exportMarkdown() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `xhs-collection-${new Date().toISOString().split('T')[0]}.md`;
+  a.download = `memora-collection-${new Date().toISOString().split('T')[0]}.md`;
   a.click();
   URL.revokeObjectURL(url);
   
