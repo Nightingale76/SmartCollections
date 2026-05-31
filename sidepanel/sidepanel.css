@@ -5,7 +5,7 @@
 }
 
 .sidebar {
-  width: 260px;
+  width: 210px;
   display: flex;
   flex-direction: column;
   border-radius: 0;
@@ -519,4 +519,65 @@
 
 .collection-card {
   animation: slideUp 0.3s ease;
+}
+
+.folder-panel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 6px 6px 6px !important;
+}
+
+.folder-entry {
+  display: inline-flex !important;
+  width: auto;
+}
+
+.folder-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.18), rgba(236, 72, 153, 0.12));
+  color: var(--text-primary);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  transition: all 0.25s ease;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+}
+
+.folder-chip:hover {
+  transform: translateY(-1px);
+  border-color: rgba(99, 102, 241, 0.45);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.28), rgba(236, 72, 153, 0.18));
+}
+
+.folder-chip.active {
+  border-color: rgba(20, 184, 166, 0.55);
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.25), rgba(99, 102, 241, 0.22));
+  color: #e0fffb;
+}
+
+.folder-chip-name {
+  white-space: nowrap;
+}
+
+.folder-chip-count {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--primary-light);
+  font-size: 10px;
+  font-weight: 700;
 }
