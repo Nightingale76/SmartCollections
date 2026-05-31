@@ -66,6 +66,11 @@
     const counts = new Map();
 
     for (const item of list) {
+      const folder = normalizeFolderName(item?.folder);
+      if (folder && folder !== '其他' && folder.length >= 2 && folder.length <= 10) {
+        counts.set(folder, (counts.get(folder) || 0) + 1);
+      }
+
       const tags = Array.isArray(item?.tags) ? item.tags : [];
       for (const raw of tags) {
         const tag = normalizeFolderName(raw);
@@ -409,6 +414,8 @@
     if (!container) return;
   
     const counts = getFolderCounts();
+
+    const folderSet = new Set((Array.isArray(FOLDERS) ? FOLDERS : []).map(f => String(f || '').trim()).filter(Boolean));
   
     const visibleFolders = FOLDERS
       .map(folder => ({
@@ -417,6 +424,16 @@
         count: counts.get(folder) || 0
       }))
       .filter(item => item.count > 0);
+
+    const extraFolders = [...counts.entries()]
+      .filter(([folder, count]) => count > 0 && folder !== '其他' && !folderSet.has(folder))
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 20)
+      .map(([folder, count]) => ({ folder, label: folder, count }));
+
+    if (extraFolders.length > 0) {
+      visibleFolders.push(...extraFolders);
+    }
   
     const otherCount = counts.get('其他') || 0;
     if (otherCount > 0) {

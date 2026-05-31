@@ -34,7 +34,18 @@ async function handleSaveExtractedItems(request, sender) {
 
     const response = await chrome.tabs.sendMessage(tab.id, { action: 'extractCollections' });
 
-    if (!response || !response.success || !response.data || response.data.length === 0) {
+    if (!response) {
+      chrome.tabs.sendMessage(tab.id, { action: 'PET_EXTRACT_ERROR', message: '未收到页面响应，请刷新后重试' }).catch(() => {});
+      return { success: false, error: '未收到页面响应' };
+    }
+
+    if (!response.success) {
+      chrome.tabs.sendMessage(tab.id, { action: 'PET_EXTRACT_ERROR', message: response.error || '提取失败，请刷新后重试' }).catch(() => {});
+      return { success: false, error: response.error || '提取失败' };
+    }
+
+    if (!response.data || response.data.length === 0) {
+      chrome.tabs.sendMessage(tab.id, { action: 'PET_EXTRACT_COMPLETE', count: 0 }).catch(() => {});
       return { success: true, count: 0 };
     }
 
@@ -57,12 +68,19 @@ async function handleSaveExtractedItems(request, sender) {
 
     chrome.tabs.sendMessage(tab.id, {
       action: 'PET_EXTRACT_COMPLETE',
-      count: uniqueNewItems.length
+      count: uniqueNewItems.length,
+      extractedCount: newItems.length
     }).catch(() => {});
 
     return { success: true, count: uniqueNewItems.length };
   } catch (error) {
     console.error('Save extracted items error:', error);
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tab && tab.id) {
+        chrome.tabs.sendMessage(tab.id, { action: 'PET_EXTRACT_ERROR', message: error.message || '提取失败，请刷新后重试' }).catch(() => {});
+      }
+    } catch (e) {}
     return { success: false, error: error.message };
   }
 }

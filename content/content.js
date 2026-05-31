@@ -105,6 +105,16 @@
       return true;
     }
 
+    if (request.action === 'PET_EXTRACT_ERROR') {
+      console.log('[content] Received PET_EXTRACT_ERROR:', request.message);
+      const petInstance = window.XHS_FLOATTING_PET && window.XHS_FLOATTING_PET.getInstance();
+      if (petInstance) {
+        petInstance.onExtractError(request.message || '提取失败，请刷新后重试');
+      }
+      sendResponse({ received: true });
+      return true;
+    }
+
     return true;
   });
 
