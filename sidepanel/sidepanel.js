@@ -393,7 +393,11 @@
   
     container.querySelectorAll('.folder-chip').forEach(btn => {
       btn.addEventListener('click', () => {
-        selectedFolder = btn.dataset.folder || '';
+        const clickedFolder = btn.dataset.folder || '';
+    
+        // 再点一次当前分类 = 取消筛选，回到全部内容
+        selectedFolder = selectedFolder === clickedFolder ? '' : clickedFolder;
+    
         renderFolders();
         renderCollections();
       });
@@ -448,6 +452,18 @@
 
   function switchView(view) {
     currentView = view;
+  
+    if (view === 'all') {
+      selectedFolder = '';
+      selectedTag = '';
+  
+      const tagFilter = document.getElementById('tagFilter');
+      if (tagFilter) {
+        tagFilter.value = '';
+      }
+  
+      renderFolders();
+    }
     
     document.querySelectorAll('.nav-item').forEach(item => {
       item.classList.toggle('active', item.dataset.view === view);
@@ -555,7 +571,7 @@
         <div class="card-content">
           <h3 class="card-title">${escapeHtml(item.title) || '无标题'}</h3>
           ${item.author ? `<p class="card-author">👤 ${escapeHtml(item.author)}</p>` : ''}
-          ${item.stats && Object.keys(item.stats).length > 0 ? `
+          ${item.platform !== 'douyin' && item.stats && (item.stats.likes || item.stats.comments) ? `
             <div class="card-stats">
               ${item.stats.likes ? `<span>👍 ${item.stats.likes}</span>` : ''}
               ${item.stats.comments ? `<span>💬 ${item.stats.comments}</span>` : ''}
