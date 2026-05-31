@@ -17,12 +17,63 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
 
+  if (request.action === 'set_ui_mode') {
+    handleSetUIMode(request, sender).then(result => {
+      sendResponse(result);
+    }).catch(error => {
+      sendResponse({ success: false, error: error.message });
+    });
+    return true;
+  }
+
   if (request.action === 'update_pet_state') {
     sendResponse({ success: true });
   }
 
   return true;
 });
+
+async function getActiveTab() {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  return tab || null;
+}
+
+async function updateSettingsUIMode(mode) {
+  const nextMode = mode === 'simple' ? 'simple' : 'full';
+  const res = await chrome.storage.local.get(['xhs_settings']);
+  const base = res.xhs_settings && typeof res.xhs_settings === 'object' ? res.xhs_settings : {};
+  await chrome.storage.local.set({ xhs_settings: { ...base, uiMode: nextMode } });
+  return nextMode;
+}
+
+async function applyUIModeToTab(tab, mode) {
+  if (!tab || !tab.id) return;
+
+  try {
+    if (mode === 'simple') {
+      await chrome.sidePanel.setOptions({ tabId: tab.id, enabled: false });
+    } else {
+      await chrome.sidePanel.setOptions({ tabId: tab.id, enabled: true, path: 'sidepanel/sidepanel.html' });
+    }
+  } catch (e) {}
+
+  try {
+    await chrome.tabs.sendMessage(tab.id, { action: 'set_ui_mode', mode });
+  } catch (e) {}
+}
+
+async function handleSetUIMode(request, sender) {
+  const mode = String(request.mode || '').toLowerCase() === 'simple' ? 'simple' : 'full';
+  const nextMode = await updateSettingsUIMode(mode);
+  const activeTab = sender && sender.tab ? sender.tab : await getActiveTab();
+  await applyUIModeToTab(activeTab, nextMode);
+
+  if (nextMode === 'full' && activeTab && activeTab.windowId) {
+    try { await chrome.sidePanel.open({ windowId: activeTab.windowId }); } catch (e) {}
+  }
+
+  return { success: true, mode: nextMode };
+}
 
 async function handleSaveExtractedItems(request, sender) {
   try {

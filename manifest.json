@@ -6,7 +6,8 @@
   "permissions": [
     "activeTab",
     "storage",
-    "sidePanel"
+    "sidePanel",
+    "tabs"
   ],
   "host_permissions": [
     "https://www.xiaohongshu.com/*",
@@ -14,7 +15,7 @@
     "https://dashscope.aliyuncs.com/*"
   ],
   "action": {
-    "default_popup": "popup/popup.html",
+    "default_popup": "popup/router.html",
     "default_title": "Memora"
   },
   "side_panel": {

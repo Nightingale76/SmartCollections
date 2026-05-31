@@ -23,7 +23,8 @@
   const DEFAULT_SETTINGS = {
     petMode: PET_MODES.COMPANION,
     autoSuggest: true,
-    showStats: true
+    showStats: true,
+    uiMode: 'full'
   };
 
   const DEFAULT_PET_SETTINGS = {

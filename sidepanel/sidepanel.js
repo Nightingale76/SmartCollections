@@ -18,7 +18,7 @@
   const FOLDERS_KEY = 'memora_folders';
   const PRESET_FOLDERS = ['美妆', '穿搭', '数码', '游戏', '旅游', '学习', '美食', '摄影', '家居', '健身', '音乐', '影视', '汽车', '母婴', '理财', '宠物', '手作'];
   let FOLDERS = [];
-  const DEFAULT_SETTINGS = { petMode: 'companion' };
+  const DEFAULT_SETTINGS = { petMode: 'companion', uiMode: 'full' };
   const DEFAULT_PET_SETTINGS = { petName: '小助手', petPosition: null };
 
   document.addEventListener('DOMContentLoaded', async () => {
@@ -108,7 +108,7 @@
   async function loadSettings() {
     try {
       const result = await chrome.storage.local.get([STORAGE_KEYS.SETTINGS]);
-      settings = result[STORAGE_KEYS.SETTINGS] || { ...DEFAULT_SETTINGS };
+      settings = { ...DEFAULT_SETTINGS, ...(result[STORAGE_KEYS.SETTINGS] || {}) };
     } catch (e) {
       settings = { ...DEFAULT_SETTINGS };
     }
@@ -287,6 +287,23 @@
     document.getElementById('clearAllBtn').addEventListener('click', clearAll);
 
     // 设置页面事件
+    const simpleModeToggle = document.getElementById('simpleModeToggle');
+    if (simpleModeToggle) {
+      simpleModeToggle.addEventListener('change', async (e) => {
+        const enabled = Boolean(e.target && e.target.checked);
+        settings.uiMode = enabled ? 'simple' : 'full';
+        await saveSettings();
+        try {
+          await chrome.runtime.sendMessage({ action: 'set_ui_mode', mode: settings.uiMode });
+        } catch (err) {}
+        updateSettingsUI();
+        if (enabled) {
+          showToast('已切换到简洁模式');
+          try { chrome.action.openPopup(); } catch (e) {}
+        }
+      });
+    }
+
     const petNameInput = document.getElementById('petNameInput');
     if (petNameInput) {
       petNameInput.addEventListener('input', async (e) => {
@@ -498,6 +515,11 @@
   }
 
   function updateSettingsUI() {
+    const simpleModeToggle = document.getElementById('simpleModeToggle');
+    if (simpleModeToggle) {
+      simpleModeToggle.checked = settings.uiMode === 'simple';
+    }
+
     const petNameInput = document.getElementById('petNameInput');
     if (petNameInput && petSettings.petName) {
       petNameInput.value = petSettings.petName === '小助手' ? '' : petSettings.petName;

@@ -143,6 +143,52 @@
   margin-bottom: 0;
 }
 
+.settings-section .toggle {
+  position: relative;
+  width: 52px;
+  height: 28px;
+  display: inline-block;
+}
+
+.settings-section .toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.settings-section .toggle-slider {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transition: all 0.2s ease;
+}
+
+.settings-section .toggle-slider::before {
+  content: '';
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  left: 3px;
+  top: 50%;
+  transform: translateY(-50%);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.85);
+  transition: all 0.2s ease;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.25);
+}
+
+.settings-section .toggle input:checked + .toggle-slider {
+  background: rgba(99, 102, 241, 0.28);
+  border-color: rgba(99, 102, 241, 0.45);
+}
+
+.settings-section .toggle input:checked + .toggle-slider::before {
+  transform: translate(24px, -50%);
+  background: rgba(255, 255, 255, 0.95);
+}
+
 .settings-section .setting-label {
   font-size: 13px;
   color: var(--text-secondary);

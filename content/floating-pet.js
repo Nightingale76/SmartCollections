@@ -557,6 +557,13 @@
     console.log('[pet] Creating new FloatingPet instance');
     petInstance = new FloatingPet();
 
+    chrome.storage.local.get(['xhs_settings']).then((res) => {
+      const uiMode = res?.xhs_settings?.uiMode;
+      if (uiMode === 'simple' && petInstance) {
+        petInstance.hide();
+      }
+    }).catch(() => {});
+
     window.addEventListener(PET_EVENTS.HIDE_PET, function() {
       console.log('[pet] Received HIDE_PET event');
       if (petInstance) {

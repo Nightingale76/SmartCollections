@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Memora 智能收藏助手</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="popup-container">
+    <div class="theme-switcher">
+      <button id="themeToggleBtn" class="theme-toggle" type="button" aria-haspopup="true" aria-expanded="false">更换主题</button>
+      <div id="themeMenu" class="theme-menu" hidden>
+        <button type="button" data-theme="douyin">抖音风格</button>
+        <button type="button" data-theme="redbook">小红书风格</button>
+        <button type="button" data-theme="bilibili">bilibili风格</button>
+      </div>
+    </div>
+    <div class="mode-switcher">
+      <button id="switchToFullBtn" class="mode-toggle" type="button">桌宠模式</button>
+    </div>
+
+    <div class="header">
+      <h1>Memora</h1>
+      <p>收藏即记忆</p>
+    </div>
+    
+    <div class="actions">
+      <button id="extractBtn">提取本页收藏</button>
+      <button id="exportBtn">导出收藏列表</button>
+      <button id="manageBtn">管理标签</button>
+    </div>
+
+    <div class="search-section">
+      <input type="text" id="searchInput" placeholder="搜索收藏内容...">
+      <select id="tagFilter">
+        <option value="">全部标签</option>
+      </select>
+    </div>
+
+    <!-- duplicate actions removed during merge resolution -->
+
+    <p id="classificationStatus" class="classification-status" hidden></p>
+
+    <div class="collection-workspace">
+      <nav class="folder-sidebar" aria-label="收藏夹">
+        <div class="folder-list" id="folderList"></div>
+        <div class="folder-controls">
+          <input id="addFolderInput" type="text" placeholder="新建收藏夹">
+          <button id="addFolderBtn" type="button" class="add-folder-btn">+</button>
+        </div>
+      </nav>
+
+      <div class="collection-list" id="collectionList">
+        <p class="empty-hint">暂无收藏内容</p>
+      </div>
+    </div>
+
+    <div class="footer">
+      <span id="itemCount">共 0 条收藏</span>
+    </div>
+  </div>
+
+  <script src="../shared/qwen-config.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

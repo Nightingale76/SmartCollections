@@ -115,6 +115,17 @@
       return true;
     }
 
+    if (request.action === 'set_ui_mode') {
+      const mode = String(request.mode || '').toLowerCase();
+      const petInstance = window.XHS_FLOATTING_PET && window.XHS_FLOATTING_PET.getInstance();
+      if (petInstance) {
+        if (mode === 'simple') petInstance.hide();
+        if (mode === 'full') petInstance.show();
+      }
+      sendResponse({ received: true });
+      return true;
+    }
+
     return true;
   });
 
