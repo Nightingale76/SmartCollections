@@ -12,24 +12,88 @@
     <aside class="sidebar glass-card">
       <div class="sidebar-header">
         <div class="logo">
-          <span class="logo-icon">💾</span>
+          <span class="logo-icon" style="width:36px;height:36px;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" style="width:100%;height:100%;">
+              <defs>
+                <linearGradient id="side-gradient-primary" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
+                  <stop offset="100%" style="stop-color:#ec4899;stop-opacity:1" />
+                </linearGradient>
+                <linearGradient id="side-gradient-book1" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
+                  <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+                </linearGradient>
+                <linearGradient id="side-gradient-book2" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" style="stop-color:#ec4899;stop-opacity:1" />
+                  <stop offset="100%" style="stop-color:#f472b6;stop-opacity:1" />
+                </linearGradient>
+              </defs>
+              <rect x="8" y="44" width="48" height="8" rx="2" fill="rgba(255,255,255,0.05)"/>
+              <rect x="14" y="20" width="16" height="28" rx="3" fill="url(#side-gradient-book1)"/>
+              <rect x="16" y="26" width="10" height="2" rx="1" fill="rgba(255,255,255,0.3)"/>
+              <rect x="16" y="30" width="8" height="2" rx="1" fill="rgba(255,255,255,0.2)"/>
+              <rect x="26" y="16" width="16" height="32" rx="3" fill="url(#side-gradient-book2)"/>
+              <rect x="28" y="24" width="10" height="2" rx="1" fill="rgba(255,255,255,0.3)"/>
+              <rect x="28" y="28" width="12" height="2" rx="1" fill="rgba(255,255,255,0.2)"/>
+              <rect x="28" y="32" width="9" height="2" rx="1" fill="rgba(255,255,255,0.15)"/>
+              <rect x="38" y="22" width="14" height="26" rx="3" fill="url(#side-gradient-book1)"/>
+              <rect x="40" y="30" width="8" height="2" rx="1" fill="rgba(255,255,255,0.3)"/>
+              <rect x="40" y="34" width="10" height="2" rx="1" fill="rgba(255,255,255,0.2)"/>
+            </svg>
+          </span>
           <h1>Memora 知识库</h1>
         </div>
       </div>
 
       <nav class="sidebar-nav">
         <button class="nav-item active" data-view="all">
-          <span class="nav-icon">📚</span>
+          <span class="nav-icon" style="width:24px;height:24px;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" style="width:100%;height:100%;">
+              <defs>
+                <linearGradient id="side-gradient-books-nav" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
+                  <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+                </linearGradient>
+              </defs>
+              <rect x="8" y="44" width="48" height="8" rx="2" fill="rgba(255,255,255,0.05)"/>
+              <rect x="14" y="20" width="16" height="28" rx="3" fill="url(#side-gradient-books-nav)"/>
+              <rect x="26" y="16" width="16" height="32" rx="3" fill="url(#side-gradient-books-nav)"/>
+              <rect x="38" y="22" width="14" height="26" rx="3" fill="url(#side-gradient-books-nav)"/>
+            </svg>
+          </span>
           <span class="nav-text">全部收藏</span>
           <span class="nav-badge" id="allBadge">0</span>
         </button>
         <button class="nav-item" data-view="byTag">
-          <span class="nav-icon">🏷️</span>
+          <span class="nav-icon" style="width:24px;height:24px;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" style="width:100%;height:100%;">
+              <defs>
+                <linearGradient id="side-gradient-tag-nav" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" style="stop-color:#ec4899;stop-opacity:1" />
+                  <stop offset="100%" style="stop-color:#f472b6;stop-opacity:1" />
+                </linearGradient>
+              </defs>
+              <path d="M8 20 Q8 12 16 12 L44 12 L56 24 L56 48 Q56 52 52 52 L20 52 L8 40 Z" fill="rgba(236, 72, 153, 0.15)" stroke="rgba(236, 72, 153, 0.3)" stroke-width="2"/>
+              <path d="M16 12 L44 12 L56 24 L56 24 L28 24 L16 12 Z" fill="url(#side-gradient-tag-nav)"/>
+              <circle cx="22" cy="18" r="4" fill="rgba(15, 15, 25, 0.8)" stroke="rgba(255,255,255,0.3)" stroke-width="1.5"/>
+            </svg>
+          </span>
           <span class="nav-text">按标签</span>
         </button>
         <div class="nav-folders">
           <button id="toggleFoldersBtn" class="nav-item" aria-expanded="false">
-            <span class="nav-icon">📁</span>
+            <span class="nav-icon" style="width:24px;height:24px;">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" style="width:100%;height:100%;">
+                <defs>
+                  <linearGradient id="side-gradient-folder-nav" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" style="stop-color:#fbbf24;stop-opacity:1" />
+                    <stop offset="100%" style="stop-color:#f59e0b;stop-opacity:1" />
+                  </linearGradient>
+                </defs>
+                <path d="M8 20 L8 52 Q8 56 12 56 L52 56 Q56 56 56 52 L56 24 Q56 20 52 20 L30 20 L26 16 L12 16 Q8 16 8 20 Z" fill="rgba(251, 191, 36, 0.15)" stroke="url(#side-gradient-folder-nav)" stroke-width="2"/>
+                <path d="M8 20 L30 20 L26 16 L12 16 Q8 16 8 20 Z" fill="url(#side-gradient-folder-nav)"/>
+              </svg>
+            </span>
             <span class="nav-text">收藏夹</span>
             <span class="nav-badge" id="folderBadge">0</span>
           </button>
@@ -38,11 +102,46 @@
           </div>
         </div>
         <button class="nav-item" data-view="stats">
-          <span class="nav-icon">📊</span>
+          <span class="nav-icon" style="width:24px;height:24px;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" style="width:100%;height:100%;">
+              <defs>
+                <linearGradient id="side-gradient-purple" x1="0%" y1="100%" x2="0%" y2="0%">
+                  <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
+                  <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+                </linearGradient>
+                <linearGradient id="side-gradient-pink" x1="0%" y1="100%" x2="0%" y2="0%">
+                  <stop offset="0%" style="stop-color:#ec4899;stop-opacity:1" />
+                  <stop offset="100%" style="stop-color:#f472b6;stop-opacity:1" />
+                </linearGradient>
+                <linearGradient id="side-gradient-teal" x1="0%" y1="100%" x2="0%" y2="0%">
+                  <stop offset="0%" style="stop-color:#14b8a6;stop-opacity:1" />
+                  <stop offset="100%" style="stop-color:#2dd4bf;stop-opacity:1" />
+                </linearGradient>
+              </defs>
+              <rect x="8" y="52" width="48" height="4" rx="2" fill="rgba(255,255,255,0.05)"/>
+              <rect x="14" y="34" width="10" height="18" rx="2" fill="url(#side-gradient-purple)"/>
+              <rect x="27" y="22" width="10" height="30" rx="2" fill="url(#side-gradient-pink)"/>
+              <rect x="40" y="40" width="10" height="12" rx="2" fill="url(#side-gradient-teal)"/>
+            </svg>
+          </span>
           <span class="nav-text">统计数据</span>
         </button>
         <button class="nav-item" data-view="settings">
-          <span class="nav-icon">⚙️</span>
+          <span class="nav-icon" style="width:24px;height:24px;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" style="width:100%;height:100%;">
+              <defs>
+                <linearGradient id="side-gradient-settings" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" style="stop-color:#94a3b8;stop-opacity:1" />
+                  <stop offset="100%" style="stop-color:#cbd5e1;stop-opacity:1" />
+                </linearGradient>
+              </defs>
+              <g fill="rgba(148, 163, 184, 0.2)" stroke="url(#side-gradient-settings)" stroke-width="2">
+                <polygon points="32,8 36,16 44,18 40,26 44,32 40,38 44,46 36,48 32,56 28,48 20,46 24,38 20,32 24,26 20,18 28,16"/>
+              </g>
+              <circle cx="32" cy="32" r="10" fill="rgba(15, 15, 25, 0.8)" stroke="url(#side-gradient-settings)" stroke-width="2"/>
+              <circle cx="32" cy="32" r="4" fill="url(#side-gradient-settings)"/>
+            </svg>
+          </span>
           <span class="nav-text">设置</span>
         </button>
       </nav>
@@ -83,7 +182,21 @@
 
       <div class="view-container scrollbar-thin" id="viewContainer">
         <div class="empty-state" id="emptyState">
-          <div class="empty-icon">📭</div>
+          <div class="empty-icon" style="width:80px;height:80px;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" style="width:100%;height:100%;opacity:0.5;">
+              <defs>
+                <linearGradient id="side-gradient-box-empty" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
+                  <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+                </linearGradient>
+              </defs>
+              <path d="M8 24 L8 52 Q8 56 12 56 L52 56 Q56 56 56 52 L56 24 L32 12 Z" fill="rgba(99, 102, 241, 0.15)"/>
+              <path d="M8 24 L32 12 L56 24 L32 36 Z" fill="url(#side-gradient-box-empty)"/>
+              <path d="M8 24 L8 52 Q8 56 12 56 L52 56 Q56 56 56 52 L56 24" fill="none" stroke="url(#side-gradient-box-empty)" stroke-width="2" stroke-linejoin="round"/>
+              <path d="M32 12 L32 56" fill="none" stroke="url(#side-gradient-box-empty)" stroke-width="2" stroke-linejoin="round"/>
+              <rect x="28" y="28" width="8" height="6" rx="1" fill="rgba(255,255,255,0.15)" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+            </svg>
+          </div>
           <p>暂无收藏内容</p>
           <small>在网页版收藏页面，点击插件桌宠图标</small>
         </div>
@@ -93,21 +206,56 @@
         <div class="stats-view" id="statsView" style="display: none;">
           <div class="stats-cards">
             <div class="stat-card glass-card">
-              <div class="stat-icon">📚</div>
+              <div class="stat-icon" style="width:40px;height:40px;">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" style="width:100%;height:100%;">
+                  <defs>
+                    <linearGradient id="side-gradient-stat-book" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
+                      <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+                    </linearGradient>
+                  </defs>
+                  <rect x="8" y="44" width="48" height="8" rx="2" fill="rgba(255,255,255,0.05)"/>
+                  <rect x="14" y="20" width="16" height="28" rx="3" fill="url(#side-gradient-stat-book)"/>
+                  <rect x="26" y="16" width="16" height="32" rx="3" fill="url(#side-gradient-stat-book)"/>
+                  <rect x="38" y="22" width="14" height="26" rx="3" fill="url(#side-gradient-stat-book)"/>
+                </svg>
+              </div>
               <div class="stat-info">
                 <span class="stat-value" id="totalCount">0</span>
                 <span class="stat-label">总收藏数</span>
               </div>
             </div>
             <div class="stat-card glass-card">
-              <div class="stat-icon">🏷️</div>
+              <div class="stat-icon" style="width:40px;height:40px;">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" style="width:100%;height:100%;">
+                  <defs>
+                    <linearGradient id="side-gradient-stat-tag" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" style="stop-color:#ec4899;stop-opacity:1" />
+                      <stop offset="100%" style="stop-color:#f472b6;stop-opacity:1" />
+                    </linearGradient>
+                  </defs>
+                  <path d="M8 20 Q8 12 16 12 L44 12 L56 24 L56 48 Q56 52 52 52 L20 52 L8 40 Z" fill="rgba(236, 72, 153, 0.15)" stroke="rgba(236, 72, 153, 0.3)" stroke-width="2"/>
+                  <path d="M16 12 L44 12 L56 24 L56 24 L28 24 L16 12 Z" fill="url(#side-gradient-stat-tag)"/>
+                  <circle cx="22" cy="18" r="4" fill="rgba(15, 15, 25, 0.8)" stroke="rgba(255,255,255,0.3)" stroke-width="1.5"/>
+                </svg>
+              </div>
               <div class="stat-info">
                 <span class="stat-value" id="totalTags">0</span>
                 <span class="stat-label">标签种类</span>
               </div>
             </div>
             <div class="stat-card glass-card">
-              <div class="stat-icon">👤</div>
+              <div class="stat-icon" style="width:40px;height:40px;">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" style="width:100%;height:100%;">
+                  <defs>
+                    <linearGradient id="side-gradient-stat-hand" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" style="stop-color:#14b8a6;stop-opacity:1" />
+                      <stop offset="100%" style="stop-color:#2dd4bf;stop-opacity:1" />
+                    </linearGradient>
+                  </defs>
+                  <path d="M24 36 L24 24 Q24 18 28 18 Q32 18 32 24 L32 30 L32 20 Q32 14 36 14 Q40 14 40 20 L40 28 L40 18 Q40 12 44 12 Q48 12 48 18 L48 34 Q50 38 50 44 Q50 50 44 54 L30 54 Q26 54 24 50 L16 44 L16 36 Q16 32 20 32 Q22 32 24 34 Z" fill="rgba(20, 184, 166, 0.15)" stroke="url(#side-gradient-stat-hand)" stroke-width="2" stroke-linejoin="round"/>
+                </svg>
+              </div>
               <div class="stat-info">
                 <span class="stat-value" id="totalAuthors">0</span>
                 <span class="stat-label">作者数量</span>
@@ -148,7 +296,24 @@
             </div>
           </div>
 
-
+          <div class="settings-section glass-card">
+            <h3 class="section-title">AI 设置</h3>
+            <div class="setting-item">
+              <label class="setting-label">当前模型</label>
+              <div class="model-info">
+                <span class="model-name" id="modelName">qwen-plus</span>
+                <span class="model-provider">阿里云百炼</span>
+              </div>
+            </div>
+              <div class="setting-item">
+                <label class="setting-label">API Key</label>
+                <input type="text" id="aiApiKeyInput" class="setting-input" placeholder="输入 DashScope API Key（sk-...）">
+                <div style="margin-top:8px;display:flex;gap:8px;">
+                  <button id="saveAiKeyBtn" class="glass-btn">保存</button>
+                  <button id="clearAiKeyBtn" class="glass-btn">清除</button>
+                </div>
+              </div>
+          </div>
         </div>
       </div>
     </main>

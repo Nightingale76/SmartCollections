@@ -132,19 +132,19 @@
     const root = this.element.querySelector('#pet-root');
     root.innerHTML = '<div class="pet-mini-panel">' +
       '<div class="mini-panel-header">' +
-        '<span class="platform-badge">💾 Memora</span>' +
+        '<span class="platform-badge"><svg class="badge-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="pet-badge-grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" /><stop offset="100%" style="stop-color:#ec4899;stop-opacity:1" /></linearGradient></defs><rect x="8" y="44" width="48" height="8" rx="2" fill="rgba(255,255,255,0.05)"/><rect x="14" y="20" width="16" height="28" rx="3" fill="#6366f1"/><rect x="26" y="16" width="16" height="32" rx="3" fill="#ec4899"/><rect x="38" y="22" width="14" height="26" rx="3" fill="#6366f1"/></svg>Memora</span>' +
       '</div>' +
       '<div class="mini-panel-content">' +
         '<button class="mini-btn extract-btn" data-action="extract">' +
-          '<span class="btn-icon">📥</span>' +
+          '<span class="btn-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="pet-extract-grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" /><stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" /></linearGradient></defs><path d="M8 24 L8 52 Q8 56 12 56 L52 56 Q56 56 56 52 L56 24 L32 12 Z" fill="rgba(99, 102, 241, 0.15)"/><path d="M8 24 L32 12 L56 24 L32 36 Z" fill="url(#pet-extract-grad)"/><path d="M8 24 L8 52 Q8 56 12 56 L52 56 Q56 56 56 52 L56 24" fill="none" stroke="url(#pet-extract-grad)" stroke-width="2" stroke-linejoin="round"/><path d="M32 12 L32 56" fill="none" stroke="url(#pet-extract-grad)" stroke-width="2" stroke-linejoin="round"/><rect x="28" y="28" width="8" height="6" rx="1" fill="rgba(255,255,255,0.15)" stroke="rgba(255,255,255,0.2)" stroke-width="1"/></svg></span>' +
           '<span class="btn-text">提取当前页</span>' +
         '</button>' +
         '<button class="mini-btn sidepanel-btn" data-action="sidepanel">' +
-          '<span class="btn-icon">📚</span>' +
+          '<span class="btn-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="pet-books-grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" /><stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" /></linearGradient></defs><rect x="8" y="44" width="48" height="8" rx="2" fill="rgba(255,255,255,0.05)"/><rect x="14" y="20" width="16" height="28" rx="3" fill="url(#pet-books-grad)"/><rect x="26" y="16" width="16" height="32" rx="3" fill="url(#pet-books-grad)"/><rect x="38" y="22" width="14" height="26" rx="3" fill="url(#pet-books-grad)"/></svg></span>' +
           '<span class="btn-text">打开知识库</span>' +
         '</button>' +
         '<button class="mini-btn close-pet-btn" data-action="hide">' +
-          '<span class="btn-icon">👋</span>' +
+          '<span class="btn-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="pet-close-grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#fbbf24;stop-opacity:1" /><stop offset="100%" style="stop-color:#f59e0b;stop-opacity:1" /></linearGradient></defs><path d="M24 36 L24 24 Q24 18 28 18 Q32 18 32 24 L32 30 L32 20 Q32 14 36 14 Q40 14 40 20 L40 28 L40 18 Q40 12 44 12 Q48 12 48 18 L48 34 Q50 38 50 44 Q50 50 44 54 L30 54 Q26 54 24 50 L16 44 L16 36 Q16 32 20 32 Q22 32 24 34 Z" fill="rgba(251, 191, 36, 0.15)" stroke="url(#pet-close-grad)" stroke-width="2" stroke-linejoin="round"/></svg></span>' +
           '<span class="btn-text">收起宠物</span>' +
         '</button>' +
       '</div>' +

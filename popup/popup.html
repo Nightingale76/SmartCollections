@@ -12,7 +12,35 @@
     <header class="glass-card header-section">
       <div class="header-content">
         <div class="logo">
-          <span class="logo-icon">💾</span>
+          <span class="logo-icon" style="width:32px;height:32px;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" style="width:100%;height:100%;">
+              <defs>
+                <linearGradient id="popup-gradient-primary" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
+                  <stop offset="100%" style="stop-color:#ec4899;stop-opacity:1" />
+                </linearGradient>
+                <linearGradient id="popup-gradient-book1" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
+                  <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+                </linearGradient>
+                <linearGradient id="popup-gradient-book2" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" style="stop-color:#ec4899;stop-opacity:1" />
+                  <stop offset="100%" style="stop-color:#f472b6;stop-opacity:1" />
+                </linearGradient>
+              </defs>
+              <rect x="8" y="44" width="48" height="8" rx="2" fill="rgba(255,255,255,0.05)"/>
+              <rect x="14" y="20" width="16" height="28" rx="3" fill="url(#popup-gradient-book1)"/>
+              <rect x="16" y="26" width="10" height="2" rx="1" fill="rgba(255,255,255,0.3)"/>
+              <rect x="16" y="30" width="8" height="2" rx="1" fill="rgba(255,255,255,0.2)"/>
+              <rect x="26" y="16" width="16" height="32" rx="3" fill="url(#popup-gradient-book2)"/>
+              <rect x="28" y="24" width="10" height="2" rx="1" fill="rgba(255,255,255,0.3)"/>
+              <rect x="28" y="28" width="12" height="2" rx="1" fill="rgba(255,255,255,0.2)"/>
+              <rect x="28" y="32" width="9" height="2" rx="1" fill="rgba(255,255,255,0.15)"/>
+              <rect x="38" y="22" width="14" height="26" rx="3" fill="url(#popup-gradient-book1)"/>
+              <rect x="40" y="30" width="8" height="2" rx="1" fill="rgba(255,255,255,0.3)"/>
+              <rect x="40" y="34" width="10" height="2" rx="1" fill="rgba(255,255,255,0.2)"/>
+            </svg>
+          </span>
           <h1>Memora</h1>
         </div>
         <div class="mode-indicator" id="modeIndicator">
@@ -31,19 +59,86 @@
 
     <div class="actions-grid glass-card">
       <button id="extractBtn" class="action-btn primary">
-        <span class="action-icon">📥</span>
+        <span class="action-icon" style="width:28px;height:28px;">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" style="width:100%;height:100%;">
+            <defs>
+              <linearGradient id="popup-gradient-box" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+              </linearGradient>
+            </defs>
+            <path d="M8 24 L8 52 Q8 56 12 56 L52 56 Q56 56 56 52 L56 24 L32 12 Z" fill="rgba(99, 102, 241, 0.15)"/>
+            <path d="M8 24 L32 12 L56 24 L32 36 Z" fill="url(#popup-gradient-box)"/>
+            <path d="M8 24 L8 52 Q8 56 12 56 L52 56 Q56 56 56 52 L56 24" fill="none" stroke="url(#popup-gradient-box)" stroke-width="2" stroke-linejoin="round"/>
+            <path d="M32 12 L32 56" fill="none" stroke="url(#popup-gradient-box)" stroke-width="2" stroke-linejoin="round"/>
+            <path d="M12 40 L24 40" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/>
+            <path d="M40 40 L52 40" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/>
+            <rect x="28" y="28" width="8" height="6" rx="1" fill="rgba(255,255,255,0.15)" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+          </svg>
+        </span>
         <span class="action-text">提取收藏</span>
       </button>
       <button id="generateTagsBtn" class="action-btn secondary">
-        <span class="action-icon">🏷️</span>
+        <span class="action-icon" style="width:28px;height:28px;">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" style="width:100%;height:100%;">
+            <defs>
+              <linearGradient id="popup-gradient-tag" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#ec4899;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#f472b6;stop-opacity:1" />
+              </linearGradient>
+            </defs>
+            <path d="M8 20 Q8 12 16 12 L44 12 L56 24 L56 48 Q56 52 52 52 L20 52 L8 40 Z" fill="rgba(236, 72, 153, 0.15)" stroke="rgba(236, 72, 153, 0.3)" stroke-width="2"/>
+            <path d="M16 12 L44 12 L56 24 L56 24 L28 24 L16 12 Z" fill="url(#popup-gradient-tag)"/>
+            <circle cx="22" cy="18" r="4" fill="rgba(15, 15, 25, 0.8)" stroke="rgba(255,255,255,0.3)" stroke-width="1.5"/>
+            <line x1="28" y1="32" x2="52" y2="32" stroke="rgba(255,255,255,0.15)" stroke-width="2" stroke-linecap="round"/>
+            <line x1="28" y1="38" x2="48" y2="38" stroke="rgba(255,255,255,0.1)" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </span>
         <span class="action-text">生成标签</span>
       </button>
       <button id="exportBtn" class="action-btn tertiary">
-        <span class="action-icon">📤</span>
+        <span class="action-icon" style="width:28px;height:28px;">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" style="width:100%;height:100%;">
+            <defs>
+              <linearGradient id="popup-gradient-hand" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#14b8a6;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#2dd4bf;stop-opacity:1" />
+              </linearGradient>
+            </defs>
+            <path d="M24 36 L24 24 Q24 18 28 18 Q32 18 32 24 L32 30 L32 20 Q32 14 36 14 Q40 14 40 20 L40 28 L40 18 Q40 12 44 12 Q48 12 48 18 L48 34 Q50 38 50 44 Q50 50 44 54 L30 54 Q26 54 24 50 L16 44 L16 36 Q16 32 20 32 Q22 32 24 34 Z" fill="rgba(20, 184, 166, 0.15)" stroke="url(#popup-gradient-hand)" stroke-width="2" stroke-linejoin="round"/>
+            <path d="M28 30 L28 40" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" stroke-linecap="round"/>
+            <path d="M36 26 L36 40" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" stroke-linecap="round"/>
+            <path d="M44 24 L44 40" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </span>
         <span class="action-text">导出MD</span>
       </button>
       <button id="openPanelBtn" class="action-btn quaternary">
-        <span class="action-icon">📚</span>
+        <span class="action-icon" style="width:28px;height:28px;">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" style="width:100%;height:100%;">
+            <defs>
+              <linearGradient id="popup-gradient-books2" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#fbbf24;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#f59e0b;stop-opacity:1" />
+              </linearGradient>
+              <linearGradient id="popup-gradient-book1b" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+              </linearGradient>
+              <linearGradient id="popup-gradient-book2b" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#ec4899;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#f472b6;stop-opacity:1" />
+              </linearGradient>
+            </defs>
+            <rect x="8" y="44" width="48" height="8" rx="2" fill="rgba(255,255,255,0.05)"/>
+            <rect x="14" y="20" width="16" height="28" rx="3" fill="url(#popup-gradient-book1b)"/>
+            <rect x="16" y="26" width="10" height="2" rx="1" fill="rgba(255,255,255,0.3)"/>
+            <rect x="26" y="16" width="16" height="32" rx="3" fill="url(#popup-gradient-book2b)"/>
+            <rect x="28" y="24" width="10" height="2" rx="1" fill="rgba(255,255,255,0.3)"/>
+            <rect x="38" y="22" width="14" height="26" rx="3" fill="url(#popup-gradient-book1b)"/>
+            <rect x="40" y="30" width="8" height="2" rx="1" fill="rgba(255,255,255,0.3)"/>
+          </svg>
+        </span>
         <span class="action-text">知识库</span>
       </button>
     </div>
@@ -52,7 +147,21 @@
 
     <div class="collection-list scrollbar-thin" id="collectionList">
       <div class="empty-state">
-        <div class="empty-icon">📭</div>
+        <div class="empty-icon" style="width:64px;height:64px;">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" style="width:100%;height:100%;opacity:0.5;">
+            <defs>
+              <linearGradient id="popup-gradient-box-empty" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+              </linearGradient>
+            </defs>
+            <path d="M8 24 L8 52 Q8 56 12 56 L52 56 Q56 56 56 52 L56 24 L32 12 Z" fill="rgba(99, 102, 241, 0.15)"/>
+            <path d="M8 24 L32 12 L56 24 L32 36 Z" fill="url(#popup-gradient-box-empty)"/>
+            <path d="M8 24 L8 52 Q8 56 12 56 L52 56 Q56 56 56 52 L56 24" fill="none" stroke="url(#popup-gradient-box-empty)" stroke-width="2" stroke-linejoin="round"/>
+            <path d="M32 12 L32 56" fill="none" stroke="url(#popup-gradient-box-empty)" stroke-width="2" stroke-linejoin="round"/>
+            <rect x="28" y="28" width="8" height="6" rx="1" fill="rgba(255,255,255,0.15)" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+          </svg>
+        </div>
         <p>暂无收藏内容</p>
         <small>点击「提取收藏」开始</small>
       </div>

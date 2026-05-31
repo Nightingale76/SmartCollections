@@ -26,6 +26,15 @@
 
 .logo-icon {
   font-size: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logo-icon img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
 }
 
 .logo h1 {
@@ -74,6 +83,15 @@
 
 .nav-icon {
   font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-icon img {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
 }
 
 .nav-text {
@@ -298,6 +316,16 @@
   font-size: 64px;
   margin-bottom: 20px;
   opacity: 0.5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.empty-icon img {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  opacity: 0.6;
 }
 
 .empty-state p {
@@ -440,6 +468,15 @@
 
 .stat-icon {
   font-size: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stat-icon img {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
 }
 
 .stat-info {
