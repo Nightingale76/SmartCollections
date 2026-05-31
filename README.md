@@ -1,58 +1,27 @@
-# xhs-smart-collection - 小红书智能收藏夹助手
+# Memora智能收藏夹——收藏即记忆
 
-一个 Chrome 浏览器插件，帮助你提取、管理和导出小红书收藏内容。
+一个 Chrome/Edge 浏览器插件，帮助你提取、管理和导出抖音/小红书收藏内容。
 
-## 功能特性
+## 
 
-1. **提取收藏** - 从当前小红书页面提取可见的收藏卡片信息
-2. **智能标签** - 基于本地关键词规则自动生成标签
-3. **搜索过滤** - 支持按标题、作者搜索，按标签过滤
-4. **Markdown 导出** - 导出收藏内容为 Markdown 格式，适合复制到 Obsidian
+1. **提取收藏** - 从抖音/小红书当前页面提取可见的收藏卡片信息
+2. **智能标签** - 调用千问3.6-plus接口智能生成标签
+3. **收藏夹管理** - 支持以收藏夹形式归类内容，收藏夹+标签形式高效检索
+4. **收藏列表导出** - 导出收藏内容为 Markdown 格式，适合复制到 Obsidian
 
-## 技术实现
+## 食用方式
 
-- **Manifest V3** - 使用最新的 Chrome 扩展规范
-- **原生 JavaScript** - 不依赖任何框架
-- **chrome.storage.local** - 本地存储收藏数据
-- **content script** - 从页面 DOM、SSR 状态（`__INITIAL_STATE__`）和收藏分页 API 提取信息
-
-## 文件结构
-
-```
-xhs-smart-collection/
-├── manifest.json      # 扩展配置文件
-├── popup.html         # 弹出页面
-├── popup.js           # 弹出页面逻辑
-├── content.js         # 内容脚本
-├── style.css          # 样式文件
-├── icons/             # 图标目录
-│   ├── icon16.png
-│   ├── icon48.png
-│   └── icon128.png
-└── README.md          # 说明文档
-```
-
-## 本地测试步骤
-
-### 1. 准备图标文件
-
-由于图标文件需要是真正的 PNG 格式，你需要替换 `icons/` 目录中的图标文件：
-
-- 创建 16x16、48x48、128x128 像素的 PNG 图标
-- 替换 `icons/icon16.png`、`icons/icon48.png`、`icons/icon128.png`
-
-### 2. 加载扩展到 Chrome
-
-1. 打开 Chrome 浏览器
-2. 访问 `chrome://extensions/`
-3. 开启右上角的「开发者模式」
-4. 点击「加载已解压的扩展程序」
-5. 选择 `xhs-smart-collection` 目录
+1. 克隆本仓库或下载ZIP到本地
+2. 打开你的 Chrome/Edge 浏览器
+3. 访问 `chrome://extensions/`或`edge://extensions/`
+4. 开启「开发者模式」
+5. 点击「加载已解压的扩展程序」
+6. 选择你将本项目下载到的本地目录
 
 ### 3. 测试功能
 
-1. 打开小红书网站并登录
-2. 进入个人主页，点击「收藏」Tab（或访问 `https://www.xiaohongshu.com/favorites`）
+1. 打开抖音/小红书网站并登录
+2. 进入个人主页，
 3. **刷新一次页面**（确保扩展在页面加载前注入，才能读到首屏数据）
 4. 确保页面上有可见的收藏卡片（可先向下滚动加载几屏）
 4. 点击浏览器工具栏中的插件图标
@@ -85,6 +54,13 @@ xhs-smart-collection/
 1. 点击「导出 Markdown」按钮
 2. 浏览器会下载一个 `.md` 文件
 3. 可以直接复制内容到 Obsidian 或其他笔记应用
+
+## 技术实现
+
+- **Manifest V3** - 使用最新的 Chrome 扩展规范
+- **原生 JavaScript** - 不依赖任何框架
+- **chrome.storage.local** - 本地存储收藏数据
+- **content script** - 从页面 DOM、SSR 状态（`__INITIAL_STATE__`）和收藏分页 API 提取信息
 
 ## 权限说明
 
