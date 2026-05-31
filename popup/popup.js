@@ -39,16 +39,8 @@
 
   // auto-trigger smarter tag generation when existing tags look uniformly uninformative (e.g., all '游戏')
   async function maybeAutoRegenerateTags() {
-    if (!collections || collections.length === 0) return;
-    const allTags = [...new Set(collections.flatMap(item => item.tags || []))];
-    if (allTags.length === 1 && allTags[0] === '游戏') {
-      // silently run local+AI generation to improve quality
-      try {
-        await generateAllTags();
-      } catch (e) {
-        console.warn('auto generate tags failed', e);
-      }
-    }
+    // Auto-regeneration removed: historical fallback for all-'游戏' caused repeated mislabeling.
+    return;
   }
 
   // run auto-check after initial load
