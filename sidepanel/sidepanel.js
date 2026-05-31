@@ -279,43 +279,132 @@
     }
   }
 
+  function getFolderFromItem(item) {
+    if (item.folder && String(item.folder).trim()) {
+      return String(item.folder).trim();
+    }
+  
+    const tags = Array.isArray(item.tags)
+      ? item.tags.map(tag => String(tag).trim()).filter(Boolean)
+      : [];
+  
+    const folderPriority = [
+      '美妆',
+      '穿搭',
+      '数码',
+      '游戏',
+      '旅游',
+      '旅行',
+      '学习',
+      '美食',
+      '摄影',
+      '家居',
+      '健身',
+      '音乐',
+      '影视',
+      '汽车',
+      '母婴',
+      '理财',
+      '宠物',
+      '手作'
+    ];
+  
+    for (const folder of folderPriority) {
+      if (tags.includes(folder)) {
+        return folder === '旅行' ? '旅游' : folder;
+      }
+    }
+  
+    return '其他';
+  }
+  
+  async function normalizeCollectionFolders() {
+    let changed = false;
+  
+    collections.forEach(item => {
+      const folder = getFolderFromItem(item);
+      if (item.folder !== folder) {
+        item.folder = folder;
+        changed = true;
+      }
+    });
+  
+    if (changed) {
+      try {
+        await chrome.storage.local.set({ [STORAGE_KEYS.COLLECTIONS]: collections });
+      } catch (e) {
+        console.warn('normalizeCollectionFolders failed', e);
+      }
+    }
+  }
+  
   function getFolderCounts() {
     return collections.reduce((counts, item) => {
-      const folder = (item.folder || '').toString();
-      const key = folder || '其他';
+      const key = getFolderFromItem(item);
       counts.set(key, (counts.get(key) || 0) + 1);
       return counts;
     }, new Map());
   }
 
-  function renderFolders() {
+  
+ function renderFolders() {
     const container = document.getElementById('sidebarFolderList');
     if (!container) return;
+  
     const counts = getFolderCounts();
-
-    const folderButtons = [ { folder: '', label: '全部收藏', count: collections.length } ];
-    for (const folder of FOLDERS) {
-      folderButtons.push({ folder, label: folder, count: counts.get(folder) || 0 });
+  
+    const visibleFolders = FOLDERS
+      .map(folder => ({
+        folder,
+        label: folder,
+        count: counts.get(folder) || 0
+      }))
+      .filter(item => item.count > 0);
+  
+    const otherCount = counts.get('其他') || 0;
+    if (otherCount > 0) {
+      visibleFolders.push({
+        folder: '其他',
+        label: '其他',
+        count: otherCount
+      });
     }
-    folderButtons.push({ folder: '其他', label: '其他', count: counts.get('其他') || 0 });
-
-    container.innerHTML = folderButtons.map(item => `
-      <div class="folder-entry" style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;">
-        <button class="folder-btn" data-folder="${escapeHtml(item.folder)}" style="flex:1;text-align:left;background:none;border:none;color:inherit;padding:0;margin:0;">${escapeHtml(item.label)}</button>
-        <span class="folder-count" style="opacity:0.8;margin-left:8px;">${item.count}</span>
-      </div>
-    `).join('');
-
-    container.querySelectorAll('.folder-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
+  
+    if (visibleFolders.length === 0) {
+      container.innerHTML = `
+        <div class="folder-empty">
+          暂无分类内容
+        </div>
+      `;
+    } else {
+      container.innerHTML = visibleFolders.map((item, index) => `
+        <div class="folder-entry">
+          <button 
+            class="folder-chip ${selectedFolder === item.folder ? 'active' : ''}" 
+            data-folder="${escapeHtml(item.folder)}"
+            style="--chip-index:${index};"
+          >
+            <span class="folder-chip-name">${escapeHtml(item.label)}</span>
+            <span class="folder-chip-count">${item.count}</span>
+          </button>
+        </div>
+      `).join('');
+    }
+  
+    container.querySelectorAll('.folder-chip').forEach(btn => {
+      btn.addEventListener('click', () => {
         selectedFolder = btn.dataset.folder || '';
+        renderFolders();
         renderCollections();
       });
     });
-    // update folder badge
+  
     const folderBadge = document.getElementById('folderBadge');
-    if (folderBadge) folderBadge.textContent = String(FOLDERS.length || 0);
-  }
+    if (folderBadge) {
+      folderBadge.textContent = String(visibleFolders.length || 0);
+    }
+  } 
+  
 
   async function addFolder(name) {
     const n = String(name || '').trim();
@@ -420,7 +509,7 @@
     }
 
     if (selectedFolder) {
-      filtered = filtered.filter(item => (item.folder || '其他') === (selectedFolder || ''));
+      filtered = filtered.filter(item => getFolderFromItem(item) === selectedFolder);
     }
 
     switch (sortOrder) {
@@ -571,10 +660,11 @@
     try {
       await chrome.storage.local.set({ [STORAGE_KEYS.COLLECTIONS]: collections });
     } catch (e) {}
+    await normalizeCollectionFolders();
     renderCollections();
     updateTagFilter();
     updateStats();
-    updateUI();
+    renderFolders();
   }
 
   function copySingleCollection(id) {
