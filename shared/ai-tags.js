@@ -158,6 +158,10 @@
   }
 
   function getLocalFolderForItem(item) {
+    let folderCandidates = null;
+    if (arguments.length >= 2) {
+      folderCandidates = arguments[1];
+    }
     const text = [
       item.title,
       item.author,
@@ -174,15 +178,38 @@
 
     // 2) if there are tags (explicit or from item), try to infer folder from tags
     const tags = Array.isArray(item.tags) && item.tags.length > 0 ? item.tags : getLocalTagsForItem(item);
-    const inferred = inferFolderFromTags(tags);
+    const inferred = inferFolderFromTags(tags, folderCandidates);
     if (inferred) return inferred;
 
     return DEFAULT_FOLDER;
   }
 
-  function inferFolderFromTags(tags) {
+  function normalizeFolderCandidates(candidates) {
+    const normalized = (Array.isArray(candidates) ? candidates : [])
+      .map(v => String(v || '').replace(/^#/, '').trim())
+      .filter(Boolean)
+      .filter(v => v.length <= 10);
+    const unique = [...new Set(normalized)].slice(0, 25);
+    if (!unique.includes(DEFAULT_FOLDER)) unique.push(DEFAULT_FOLDER);
+    return unique;
+  }
+
+  function sanitizeFolderValue(folder, fallback = DEFAULT_FOLDER) {
+    const value = String(folder || '').replace(/^#/, '').trim();
+    if (!value) return fallback;
+    if (value.length > 12) return fallback;
+    if (['默认', '杂项', '未分类', '分类', '分区'].includes(value)) return fallback;
+    return value;
+  }
+
+  function inferFolderFromTags(tags, folderCandidates) {
     if (!Array.isArray(tags) || tags.length === 0) return null;
     const lowerTags = tags.map(t => String(t || '').toLowerCase());
+
+    const candidates = normalizeFolderCandidates(folderCandidates).filter(f => f !== DEFAULT_FOLDER);
+    for (const c of candidates) {
+      if (lowerTags.includes(String(c).toLowerCase())) return c;
+    }
 
     // direct match: tag equals folder name
     for (const rule of FOLDER_RULES) {
@@ -219,15 +246,21 @@
     return synonymMap[value] || value || fallback;
   }
 
-  function buildFullClassificationPrompt(item, mode = 'full') {
+  function buildFolderInstruction(folderCandidates) {
+    const candidates = normalizeFolderCandidates(folderCandidates).filter(f => f !== DEFAULT_FOLDER);
+    const base = candidates.length > 0 ? candidates.join('、') : '美妆、穿搭、数码、游戏、旅游、学习';
+    return `仅输出 JSON。folder 优先从这些分区中选择：${base}。若都不合适，可以新建一个 2 到 6 个字的中文分区名（不要使用“其他/默认/杂项”这类泛称）。只有完全无法判断时才输出“其他”。`;
+  }
+
+  function buildFullClassificationPrompt(item, mode = 'full', folderCandidates) {
     // reuse existing tag prompt but include folder guidance when mode !== 'tags'
     const base = [];
     if (mode === 'folder') {
-      base.push('你是一名面向小红书/抖音收藏内容的分类器。仅输出 JSON: {"folder":"<一级分类>"}，folder 必须从这些选项中选择：美妆、穿搭、数码、游戏、旅游、学习、其他。');
+      base.push(`你是一名面向小红书/抖音收藏内容的分类器。仅输出 JSON: {"folder":"<一级分类>"}。${buildFolderInstruction(folderCandidates)}`);
     } else if (mode === 'tags') {
       base.push('你是一名面向小红书/抖音收藏内容的分类器。仅输出 JSON: {"tags":["标签1","标签2"]}，输出 1 到 5 个中文话题标签。');
     } else {
-      base.push('你是一名面向小红书/抖音收藏内容的分类器。请输出 JSON: {"folder":"学习","tags":["标签1","标签2"]}。folder 必须从这些选项中选择：美妆、穿搭、数码、游戏、旅游、学习、其他。输出 1 到 5 个中文话题标签。');
+      base.push(`你是一名面向小红书/抖音收藏内容的分类器。请输出 JSON: {"folder":"学习","tags":["标签1","标签2"]}。${buildFolderInstruction(folderCandidates)} 输出 1 到 5 个中文话题标签。`);
     }
 
     base.push(`标题：${item.title || '无'}`);
@@ -241,9 +274,9 @@
   }
 
   async function generateClassification(item, options = {}) {
-    const { includeImage = false, mode = 'full' } = options;
+    const { includeImage = false, mode = 'full', folderCandidates = null } = options;
     const local = {
-      folder: getLocalFolderForItem(item),
+      folder: getLocalFolderForItem(item, folderCandidates),
       tags: getLocalTagsForItem(item)
     };
 
@@ -254,7 +287,7 @@
       return local;
     }
 
-    const prompt = buildFullClassificationPrompt(item, mode === 'folder' ? 'folder' : mode === 'tags' ? 'tags' : 'full');
+    const prompt = buildFullClassificationPrompt(item, mode === 'folder' ? 'folder' : mode === 'tags' ? 'tags' : 'full', folderCandidates);
     const content = [{ type: 'text', text: prompt }];
     if (includeImage && item.cover) {
       content.push({ type: 'image_url', image_url: { url: item.cover } });
@@ -281,7 +314,7 @@
       const parsed = parseJsonObject(getMessageText(message));
 
       if (mode === 'folder') {
-        const folder = normalizeFolder(parsed?.folder, local.folder);
+        const folder = sanitizeFolderValue(normalizeFolder(parsed?.folder, local.folder), local.folder);
         return { folder };
       }
 
@@ -291,7 +324,7 @@
       }
 
       // full
-      const folder = normalizeFolder(parsed?.folder, local.folder);
+      const folder = sanitizeFolderValue(normalizeFolder(parsed?.folder, local.folder), local.folder);
       const aiTags = removeDefaultTagWhenSpecific(parsed?.tags);
       const tags = aiTags.length > 0 && !aiTags.includes(DEFAULT_TAG) ? aiTags : local.tags;
       return { folder, tags };

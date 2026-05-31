@@ -16,6 +16,63 @@
   const PET_MODES = { QUIET: 'quiet', COMPANION: 'companion', ACTIVE: 'active' };
 
   const AI_CONFIG_STORAGE_KEY = 'memora_ai_config';
+  const FOLDERS_KEY = 'memora_folders';
+  const PRESET_FOLDERS = ['美妆', '穿搭', '数码', '游戏', '旅游', '学习', '美食', '摄影', '家居', '健身', '音乐', '影视', '汽车', '母婴', '理财', '宠物', '手作'];
+
+  function normalizeFolderName(name) {
+    return String(name || '').replace(/^#/, '').trim();
+  }
+
+  function suggestFoldersFromCollections(items, options = {}) {
+    const { limit = 12 } = options;
+    const list = Array.isArray(items) ? items : [];
+    if (list.length === 0) return [];
+
+    const minCount = list.length >= 30 ? 2 : 1;
+    const counts = new Map();
+
+    for (const item of list) {
+      const tags = Array.isArray(item?.tags) ? item.tags : [];
+      for (const raw of tags) {
+        const tag = normalizeFolderName(raw);
+        if (!tag || tag === '其他') continue;
+        if (tag.length < 2 || tag.length > 10) continue;
+        counts.set(tag, (counts.get(tag) || 0) + 1);
+      }
+    }
+
+    return [...counts.entries()]
+      .filter(([, count]) => count >= minCount)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, limit)
+      .map(([tag]) => tag);
+  }
+
+  async function loadFoldersFromStorage() {
+    try {
+      const res = await chrome.storage.local.get([FOLDERS_KEY]);
+      const stored = res[FOLDERS_KEY];
+      return Array.isArray(stored) ? stored.filter(Boolean).map(normalizeFolderName).filter(Boolean) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  async function saveFoldersToStorage(folders) {
+    try {
+      await chrome.storage.local.set({ [FOLDERS_KEY]: folders });
+    } catch (e) {}
+  }
+
+  async function getFolderCandidatesFromUserData() {
+    const stored = await loadFoldersFromStorage();
+    const base = stored.length > 0 ? stored : PRESET_FOLDERS.slice();
+    const suggested = suggestFoldersFromCollections(collections, { limit: 12 });
+    return [...new Set([...base, ...suggested])]
+      .map(normalizeFolderName)
+      .filter(Boolean)
+      .filter(f => f !== '其他');
+  }
 
   async function loadAiConfig() {
     try {
@@ -133,6 +190,8 @@
       if (response && response.success && response.data.length > 0) {
         let addedCount = 0;
         const AI_TAGS = window.MEMORA_AI_TAGS;
+        const initialCandidates = await getFolderCandidatesFromUserData();
+        const folderSet = new Set(initialCandidates);
 
         for (const item of response.data) {
           const existingIndex = collections.findIndex(c => c.id === item.id);
@@ -151,18 +210,31 @@
             // determine folder using AI classification if available, otherwise local rules
             if (AI_TAGS && AI_TAGS.generateClassification) {
               try {
-                const folderRes = await AI_TAGS.generateClassification(item, { includeImage: false, mode: 'folder' });
-                item.folder = folderRes.folder || (AI_TAGS.getLocalFolderForItem ? AI_TAGS.getLocalFolderForItem(item) : '其他');
+                const folderRes = await AI_TAGS.generateClassification(item, { includeImage: false, mode: 'folder', folderCandidates: [...folderSet] });
+                item.folder = folderRes.folder || (AI_TAGS.getLocalFolderForItem ? AI_TAGS.getLocalFolderForItem(item, [...folderSet]) : '其他');
               } catch (e) {
-                item.folder = (AI_TAGS.getLocalFolderForItem ? AI_TAGS.getLocalFolderForItem(item) : '其他');
+                item.folder = (AI_TAGS.getLocalFolderForItem ? AI_TAGS.getLocalFolderForItem(item, [...folderSet]) : '其他');
               }
             } else {
-              item.folder = (AI_TAGS.getLocalFolderForItem ? AI_TAGS.getLocalFolderForItem(item) : '其他');
+              item.folder = (AI_TAGS.getLocalFolderForItem ? AI_TAGS.getLocalFolderForItem(item, [...folderSet]) : '其他');
+            }
+            const normalizedFolder = normalizeFolderName(item.folder);
+            if (normalizedFolder && normalizedFolder !== '其他' && !folderSet.has(normalizedFolder)) {
+              folderSet.add(normalizedFolder);
             }
             item.savedAt = new Date().toISOString();
             collections.push(item);
             addedCount++;
           }
+        }
+
+        const storedFolders = await loadFoldersFromStorage();
+        const mergedFolders = [...new Set([...(storedFolders.length > 0 ? storedFolders : PRESET_FOLDERS), ...folderSet])]
+          .map(normalizeFolderName)
+          .filter(Boolean)
+          .filter(f => f !== '其他');
+        if (mergedFolders.length > 0) {
+          await saveFoldersToStorage(mergedFolders);
         }
 
         try {

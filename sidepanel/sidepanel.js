@@ -53,6 +53,53 @@
     }
   }
 
+  function normalizeFolderName(name) {
+    return String(name || '').replace(/^#/, '').trim();
+  }
+
+  function suggestFoldersFromCollections(items, options = {}) {
+    const { limit = 12 } = options;
+    const list = Array.isArray(items) ? items : [];
+    if (list.length === 0) return [];
+
+    const minCount = list.length >= 30 ? 2 : 1;
+    const counts = new Map();
+
+    for (const item of list) {
+      const tags = Array.isArray(item?.tags) ? item.tags : [];
+      for (const raw of tags) {
+        const tag = normalizeFolderName(raw);
+        if (!tag || tag === '其他') continue;
+        if (tag.length < 2 || tag.length > 10) continue;
+        counts.set(tag, (counts.get(tag) || 0) + 1);
+      }
+    }
+
+    return [...counts.entries()]
+      .filter(([, count]) => count >= minCount)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, limit)
+      .map(([tag]) => tag);
+  }
+
+  async function maybeAutoExpandFolders() {
+    if (!Array.isArray(collections) || collections.length === 0) return;
+
+    const suggested = suggestFoldersFromCollections(collections, { limit: 12 });
+    const current = (Array.isArray(FOLDERS) ? FOLDERS : [])
+      .map(normalizeFolderName)
+      .filter(Boolean)
+      .filter(f => f !== '其他');
+
+    const merged = [...new Set([...current, ...suggested])];
+    const changed = merged.length !== current.length || merged.some((v, i) => v !== current[i]);
+
+    if (changed) {
+      FOLDERS = merged;
+      await saveFoldersToStorage();
+    }
+  }
+
   async function loadSettings() {
     try {
       const result = await chrome.storage.local.get([STORAGE_KEYS.SETTINGS]);
@@ -167,6 +214,9 @@
           await chrome.storage.local.set({ [STORAGE_KEYS.COLLECTIONS]: collections });
         } catch (e) {}
       }
+
+      await maybeAutoExpandFolders();
+      await normalizeCollectionFolders();
       
       renderCollections();
       updateTagFilter();
@@ -281,12 +331,19 @@
 
   function getFolderFromItem(item) {
     if (item.folder && String(item.folder).trim()) {
-      return String(item.folder).trim();
+      const v = String(item.folder).trim();
+      if (v !== '其他') return v;
     }
   
     const tags = Array.isArray(item.tags)
       ? item.tags.map(tag => String(tag).trim()).filter(Boolean)
       : [];
+
+    for (const folder of Array.isArray(FOLDERS) ? FOLDERS : []) {
+      const f = String(folder || '').trim();
+      if (!f || f === '其他') continue;
+      if (tags.includes(f)) return f;
+    }
   
     const folderPriority = [
       '美妆',
