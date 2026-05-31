@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Memora",
-  "version": "2.3.1",
+  "version": "2.3.2",
   "description": "Memora 智能收藏助手 - 提取、管理和导出多平台收藏内容",
   "permissions": [
     "activeTab",
