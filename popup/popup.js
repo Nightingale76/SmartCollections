@@ -15,7 +15,6 @@
   const PET_STATES = { IDLE: 'idle', THINKING: 'thinking', HAPPY: 'happy' };
   const PET_MODES = { QUIET: 'quiet', COMPANION: 'companion', ACTIVE: 'active' };
 
-  const AI_CONFIG_STORAGE_KEY = 'memora_ai_config';
   const FOLDERS_KEY = 'memora_folders';
   const PRESET_FOLDERS = ['美妆', '穿搭', '数码', '游戏', '旅游', '学习', '美食', '摄影', '家居', '健身', '音乐', '影视', '汽车', '母婴', '理财', '宠物', '手作'];
 
@@ -76,14 +75,50 @@
 
   async function loadAiConfig() {
     try {
-      const res = await chrome.storage.local.get([AI_CONFIG_STORAGE_KEY]);
-      const cfg = res[AI_CONFIG_STORAGE_KEY];
-      if (cfg && typeof cfg === 'object') {
-        window.SMART_COLLECTIONS_AI_CONFIG = cfg;
+      const manager = window.MEMORA_AI_CONFIG_MANAGER;
+      if (manager && manager.load) {
+        await manager.load();
       }
+      updateAiConfigInputs();
     } catch (e) {
       console.warn('loadAiConfig failed', e);
     }
+  }
+
+  function getCurrentAiConfig() {
+    const manager = window.MEMORA_AI_CONFIG_MANAGER;
+    return manager && manager.normalizeConfig
+      ? manager.normalizeConfig(window.SMART_COLLECTIONS_AI_CONFIG)
+      : (window.SMART_COLLECTIONS_AI_CONFIG || {});
+  }
+
+  function updateAiConfigInputs() {
+    const cfg = getCurrentAiConfig();
+    const keyInput = document.getElementById('popupAiApiKeyInput');
+    const modelInput = document.getElementById('popupAiModelInput');
+    if (keyInput) keyInput.value = cfg.apiKey || '';
+    if (modelInput) modelInput.value = cfg.model || 'qwen-plus';
+  }
+
+  async function saveAiConfigFromPopup() {
+    const keyInput = document.getElementById('popupAiApiKeyInput');
+    const modelInput = document.getElementById('popupAiModelInput');
+    const apiKey = String(keyInput?.value || '').trim();
+    const model = String(modelInput?.value || '').trim() || 'qwen-plus';
+    const manager = window.MEMORA_AI_CONFIG_MANAGER;
+    if (manager && manager.save) {
+      await manager.save({ apiKey, model });
+    } else {
+      window.SMART_COLLECTIONS_AI_CONFIG = { ...(window.SMART_COLLECTIONS_AI_CONFIG || {}), apiKey, model };
+    }
+    updateAiConfigInputs();
+    showToast(apiKey ? 'AI 配置已保存' : '已切换为本地分类模式');
+    return true;
+  }
+
+  async function ensureAiConfigReady() {
+    await loadAiConfig();
+    return true;
   }
 
   document.addEventListener('DOMContentLoaded', async () => {
@@ -154,6 +189,21 @@
     document.getElementById('generateTagsBtn').addEventListener('click', generateAllTags);
     document.getElementById('exportBtn').addEventListener('click', exportMarkdown);
     document.getElementById('openPanelBtn').addEventListener('click', openSidePanel);
+    document.getElementById('clearCollectionsBtn').addEventListener('click', clearCollectionsForTesting);
+
+    const saveAiConfigBtn = document.getElementById('popupSaveAiConfigBtn');
+    if (saveAiConfigBtn) {
+      saveAiConfigBtn.addEventListener('click', saveAiConfigFromPopup);
+    }
+
+    ['popupAiApiKeyInput', 'popupAiModelInput'].forEach(id => {
+      const input = document.getElementById(id);
+      if (input) {
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') saveAiConfigFromPopup();
+        });
+      }
+    });
 
     document.getElementById('searchInput').addEventListener('input', (e) => {
       searchTerm = e.target.value;
@@ -176,6 +226,10 @@
   }
 
   async function extractCollections() {
+    if (!(await ensureAiConfigReady())) {
+      return;
+    }
+
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
     const supportedSites = ['xiaohongshu.com', 'douyin.com'];
@@ -261,6 +315,10 @@
   async function generateAllTags() {
     if (isGeneratingAITags) {
       showToast('正在生成中，请稍候...');
+      return;
+    }
+
+    if (!(await ensureAiConfigReady())) {
       return;
     }
 
@@ -455,6 +513,25 @@
     renderCollections();
     updateTagFilter();
     showToast('已删除');
+  }
+
+  async function clearCollectionsForTesting() {
+    if (collections.length === 0) {
+      showToast('当前没有收藏内容');
+      return;
+    }
+
+    if (!confirm('确定清空当前 popup 收藏缓存吗？此操作仅清空本地列表，方便重新抓取测试。')) {
+      return;
+    }
+
+    collections = [];
+    try {
+      await chrome.storage.local.set({ [STORAGE_KEYS.COLLECTIONS]: [] });
+    } catch (e) {}
+    renderCollections();
+    updateTagFilter();
+    showToast('已清空收藏缓存');
   }
 
   function escapeHtml(text) {

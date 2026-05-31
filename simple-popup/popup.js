@@ -10,6 +10,78 @@ const XHS_LAST_COLLECTION_PAGES_KEY = 'memora_simple_last_collection_pages';
 const COLLECTIONS_KEY = 'memora_simple_collections';
 
 const AI_CONFIG = window.SMART_COLLECTIONS_AI_CONFIG || {};
+
+async function loadAiConfig() {
+  const manager = window.MEMORA_AI_CONFIG_MANAGER;
+  if (manager && manager.load) {
+    await manager.load();
+  }
+  updateAiConfigInputs();
+}
+
+function getCurrentAiConfig() {
+  const manager = window.MEMORA_AI_CONFIG_MANAGER;
+  return manager && manager.normalizeConfig
+    ? manager.normalizeConfig(window.SMART_COLLECTIONS_AI_CONFIG)
+    : (window.SMART_COLLECTIONS_AI_CONFIG || AI_CONFIG || {});
+}
+
+function updateAiConfigInputs() {
+  const cfg = getCurrentAiConfig();
+  const keyInput = document.getElementById('simpleAiApiKeyInput');
+  const modelInput = document.getElementById('simpleAiModelInput');
+  if (keyInput) keyInput.value = cfg.apiKey || '';
+  if (modelInput) modelInput.value = cfg.model || 'qwen-plus';
+}
+
+async function saveAiConfigFromSimplePopup() {
+  const keyInput = document.getElementById('simpleAiApiKeyInput');
+  const modelInput = document.getElementById('simpleAiModelInput');
+  const apiKey = String(keyInput?.value || '').trim();
+  const model = String(modelInput?.value || '').trim() || 'qwen-plus';
+  const manager = window.MEMORA_AI_CONFIG_MANAGER;
+  if (manager && manager.save) {
+    await manager.save({ apiKey, model });
+  } else {
+    Object.assign(AI_CONFIG, { apiKey, model });
+  }
+  updateAiConfigInputs();
+  setAiConfigPanelOpen(false);
+  showToast(apiKey ? 'AI 配置已保存' : '已切换为本地分类模式');
+  return true;
+}
+
+async function ensureAiConfigReady() {
+  await loadAiConfig();
+  return true;
+}
+
+function setAiConfigPanelOpen(open) {
+  const panel = document.getElementById('simpleAiConfigPanel');
+  const button = document.getElementById('simpleAiSettingsBtn');
+  if (!panel || !button) return;
+  panel.hidden = !open;
+  button.setAttribute('aria-expanded', String(open));
+}
+
+function initAiConfigPanel() {
+  const button = document.getElementById('simpleAiSettingsBtn');
+  const panel = document.getElementById('simpleAiConfigPanel');
+  if (!button || !panel) return;
+
+  button.addEventListener('click', (event) => {
+    event.stopPropagation();
+    setAiConfigPanelOpen(panel.hidden);
+  });
+
+  panel.addEventListener('click', (event) => {
+    event.stopPropagation();
+  });
+
+  document.addEventListener('click', () => {
+    setAiConfigPanelOpen(false);
+  });
+}
 const DEFAULT_TAG = '其他';
 const DEFAULT_FOLDER = '其他';
 const FOLDERS_KEY = 'memora_simple_folders';
@@ -1074,6 +1146,10 @@ function mergeExtractedCollections(extractedItems) {
 
 async function extractCollections() {
   const extractBtn = document.getElementById('extractBtn');
+  if (!(await ensureAiConfigReady())) {
+    return;
+  }
+
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
   const supportedSites = ['xiaohongshu.com', 'douyin.com'];
@@ -1221,8 +1297,28 @@ async function removeCollection(id) {
   showToast('已删除');
 }
 
+async function clearCollectionsForTesting() {
+  if (collections.length === 0) {
+    showToast('当前没有收藏内容');
+    return;
+  }
+
+  if (!confirm('确定清空当前 popup 收藏缓存吗？此操作仅清空本地列表，方便重新抓取测试。')) {
+    return;
+  }
+
+  collections = [];
+  await chrome.storage.local.set({ [COLLECTIONS_KEY]: [] });
+  renderCollections();
+  updateTagFilter();
+  setClassificationStatus('');
+  showToast('已清空收藏缓存');
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   initThemeSwitcher();
+  initAiConfigPanel();
+  await loadAiConfig();
   await loadFoldersFromStorage();
   await loadCollections();
 
@@ -1259,6 +1355,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   
   document.getElementById('extractBtn').addEventListener('click', extractCollections);
+  document.getElementById('clearCollectionsBtn').addEventListener('click', clearCollectionsForTesting);
+  const saveAiConfigBtn = document.getElementById('simpleSaveAiConfigBtn');
+  if (saveAiConfigBtn) {
+    saveAiConfigBtn.addEventListener('click', saveAiConfigFromSimplePopup);
+  }
+  ['simpleAiApiKeyInput', 'simpleAiModelInput'].forEach(id => {
+    const input = document.getElementById(id);
+    if (input) {
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') saveAiConfigFromSimplePopup();
+      });
+    }
+  });
   document.getElementById('exportBtn').addEventListener('click', exportMarkdown);
   document.getElementById('manageBtn').addEventListener('click', () => {
     manageMode = !manageMode;

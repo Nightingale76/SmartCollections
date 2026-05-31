@@ -18,6 +18,16 @@
     </div>
     <div class="mode-switcher">
       <button id="switchToFullBtn" class="mode-toggle" type="button">桌宠模式</button>
+      <button id="simpleAiSettingsBtn" class="mode-toggle settings-toggle" type="button" aria-haspopup="true" aria-expanded="false">设置</button>
+    </div>
+    <div id="simpleAiConfigPanel" class="ai-config-panel" hidden>
+      <label class="ai-config-label" for="simpleAiApiKeyInput">API Key</label>
+      <input type="password" id="simpleAiApiKeyInput" class="ai-config-input" placeholder="sk-..." autocomplete="off">
+      <label class="ai-config-label" for="simpleAiModelInput">模型名称</label>
+      <div class="ai-config-row">
+        <input type="text" id="simpleAiModelInput" class="ai-config-input model" placeholder="qwen-plus">
+        <button id="simpleSaveAiConfigBtn" class="ai-config-save" type="button">保存</button>
+      </div>
     </div>
 
     <div class="header">
@@ -29,6 +39,7 @@
       <button id="extractBtn">提取本页收藏</button>
       <button id="exportBtn">导出收藏列表</button>
       <button id="manageBtn">管理标签</button>
+      <button id="clearCollectionsBtn" class="danger-action" type="button">清空</button>
     </div>
 
     <div class="search-section">

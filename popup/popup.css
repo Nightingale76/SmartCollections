@@ -14,7 +14,8 @@
 .header-content {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
+  gap: 10px;
 }
 
 .logo {
@@ -62,6 +63,56 @@
 
 .mode-text {
   color: var(--text-secondary);
+}
+
+.header-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  min-width: 170px;
+}
+
+.ai-config-compact {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 74px 42px;
+  gap: 4px;
+  width: 210px;
+}
+
+.ai-config-input {
+  min-width: 0;
+  height: 24px;
+  padding: 0 7px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-primary);
+  font-size: 10px;
+  outline: none;
+}
+
+.ai-config-input.model {
+  text-align: center;
+}
+
+.ai-config-input:focus {
+  border-color: rgba(99, 102, 241, 0.5);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.14);
+}
+
+.ai-config-save {
+  height: 24px;
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  border-radius: 7px;
+  background: rgba(99, 102, 241, 0.14);
+  color: var(--primary-light);
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.ai-config-save:hover {
+  background: rgba(99, 102, 241, 0.22);
 }
 
 .search-section {
@@ -121,6 +172,11 @@
 .action-btn.quaternary:hover {
   border-color: rgba(245, 158, 11, 0.5);
   box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+
+.action-btn.danger:hover {
+  border-color: rgba(239, 68, 68, 0.5);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.28);
 }
 
 .action-icon {

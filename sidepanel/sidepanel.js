@@ -123,36 +123,44 @@
     }
   }
 
-  // AI config storage key
-  const AI_CONFIG_STORAGE_KEY = 'memora_ai_config';
-
   async function loadAiConfig() {
     try {
-      const res = await chrome.storage.local.get([AI_CONFIG_STORAGE_KEY]);
-      const cfg = res[AI_CONFIG_STORAGE_KEY];
-      if (cfg && typeof cfg === 'object') {
-        window.SMART_COLLECTIONS_AI_CONFIG = cfg;
+      const manager = window.MEMORA_AI_CONFIG_MANAGER;
+      if (manager && manager.load) {
+        await manager.load();
       }
-      // populate input
+      const cfg = getCurrentAiConfig();
       const input = document.getElementById('aiApiKeyInput');
-      if (input && window.SMART_COLLECTIONS_AI_CONFIG && window.SMART_COLLECTIONS_AI_CONFIG.apiKey) {
-        input.value = window.SMART_COLLECTIONS_AI_CONFIG.apiKey;
-      }
+      const modelInput = document.getElementById('aiModelInput');
+      if (input) input.value = cfg.apiKey || '';
+      if (modelInput) modelInput.value = cfg.model || 'qwen-plus';
     } catch (e) {
       console.warn('loadAiConfig failed', e);
     }
   }
 
-  async function saveAiConfig(apiKey) {
+  function getCurrentAiConfig() {
+    const manager = window.MEMORA_AI_CONFIG_MANAGER;
+    return manager && manager.normalizeConfig
+      ? manager.normalizeConfig(window.SMART_COLLECTIONS_AI_CONFIG)
+      : (window.SMART_COLLECTIONS_AI_CONFIG || {});
+  }
+
+  async function saveAiConfig(apiKey, model) {
     try {
-      const base = (window.SMART_COLLECTIONS_AI_CONFIG && window.SMART_COLLECTIONS_AI_CONFIG.baseUrl) || 'https://dashscope.aliyuncs.com/compatible-mode/v1';
-      const model = (window.SMART_COLLECTIONS_AI_CONFIG && window.SMART_COLLECTIONS_AI_CONFIG.model) || 'qwen-plus';
-      const cfg = { apiKey: String(apiKey || '').trim(), model, baseUrl: base };
-      await chrome.storage.local.set({ [AI_CONFIG_STORAGE_KEY]: cfg });
-      window.SMART_COLLECTIONS_AI_CONFIG = cfg;
+      const manager = window.MEMORA_AI_CONFIG_MANAGER;
+      const next = {
+        apiKey: String(apiKey || '').trim(),
+        model: String(model || '').trim() || 'qwen-plus'
+      };
+      const cfg = manager && manager.save
+        ? await manager.save(next)
+        : Object.assign(window.SMART_COLLECTIONS_AI_CONFIG || {}, next);
       const modelName = document.getElementById('modelName');
       if (modelName) modelName.textContent = cfg.model || 'qwen-plus';
-      showToast('AI Key 已保存');
+      const modelInput = document.getElementById('aiModelInput');
+      if (modelInput) modelInput.value = cfg.model || 'qwen-plus';
+      showToast(next.apiKey ? 'AI 配置已保存' : '已切换为本地分类模式');
     } catch (e) {
       console.error('saveAiConfig failed', e);
       showToast('保存失败');
@@ -161,13 +169,17 @@
 
   async function clearAiConfig() {
     try {
-      await chrome.storage.local.remove([AI_CONFIG_STORAGE_KEY]);
-      // reset to default qwen-config.js
-      const defaultCfg = window.SMART_COLLECTIONS_AI_CONFIG || { apiKey: '', model: 'qwen-plus', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1' };
-      window.SMART_COLLECTIONS_AI_CONFIG = defaultCfg;
+      const manager = window.MEMORA_AI_CONFIG_MANAGER;
+      const cfg = manager && manager.clear
+        ? await manager.clear()
+        : Object.assign(window.SMART_COLLECTIONS_AI_CONFIG || {}, { apiKey: '', model: 'qwen-plus' });
       const input = document.getElementById('aiApiKeyInput');
+      const modelInput = document.getElementById('aiModelInput');
       if (input) input.value = '';
-      showToast('AI Key 已清除');
+      if (modelInput) modelInput.value = cfg.model || 'qwen-plus';
+      const modelName = document.getElementById('modelName');
+      if (modelName) modelName.textContent = cfg.model || 'qwen-plus';
+      showToast('AI 配置已清除');
     } catch (e) {
       console.error('clearAiConfig failed', e);
       showToast('清除失败');
@@ -339,8 +351,8 @@
     if (saveBtn) {
       saveBtn.addEventListener('click', async () => {
         const v = document.getElementById('aiApiKeyInput')?.value || '';
-        if (!v) { showToast('API Key 不能为空'); return; }
-        await saveAiConfig(v);
+        const model = document.getElementById('aiModelInput')?.value || '';
+        await saveAiConfig(v, model);
       });
     }
     if (clearBtn) {
@@ -528,6 +540,11 @@
     const modeNameEl = document.getElementById('modelName');
     if (modeNameEl && window.SMART_COLLECTIONS_AI_CONFIG) {
       modeNameEl.textContent = window.SMART_COLLECTIONS_AI_CONFIG.model || 'qwen-plus';
+    }
+
+    const aiModelInput = document.getElementById('aiModelInput');
+    if (aiModelInput && window.SMART_COLLECTIONS_AI_CONFIG) {
+      aiModelInput.value = window.SMART_COLLECTIONS_AI_CONFIG.model || 'qwen-plus';
     }
 
     document.querySelectorAll('.settings-section .mode-btn').forEach(btn => {

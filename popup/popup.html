@@ -43,9 +43,16 @@
           </span>
           <h1>Memora</h1>
         </div>
-        <div class="mode-indicator" id="modeIndicator">
-          <span class="mode-dot"></span>
-          <span class="mode-text">陪伴模式</span>
+        <div class="header-actions">
+          <div class="ai-config-compact" id="popupAiConfig">
+            <input type="password" id="popupAiApiKeyInput" class="ai-config-input" placeholder="API Key" autocomplete="off">
+            <input type="text" id="popupAiModelInput" class="ai-config-input model" placeholder="Model">
+            <button type="button" id="popupSaveAiConfigBtn" class="ai-config-save" title="保存 AI 配置">保存</button>
+          </div>
+          <div class="mode-indicator" id="modeIndicator">
+            <span class="mode-dot"></span>
+            <span class="mode-text">陪伴模式</span>
+          </div>
         </div>
       </div>
     </header>
@@ -140,6 +147,17 @@
           </svg>
         </span>
         <span class="action-text">知识库</span>
+      </button>
+      <button id="clearCollectionsBtn" class="action-btn danger">
+        <span class="action-icon" style="width:28px;height:28px;">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" style="width:100%;height:100%;">
+            <path d="M20 22 H44 L42 54 H22 Z" fill="rgba(239,68,68,0.16)" stroke="#ef4444" stroke-width="2" stroke-linejoin="round"/>
+            <path d="M16 18 H48" stroke="#ef4444" stroke-width="3" stroke-linecap="round"/>
+            <path d="M26 18 L28 12 H36 L38 18" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M28 28 V48 M36 28 V48" stroke="rgba(255,255,255,0.35)" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </span>
+        <span class="action-text">清空</span>
       </button>
     </div>
 
