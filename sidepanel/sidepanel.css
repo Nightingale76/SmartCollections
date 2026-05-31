@@ -640,3 +640,7 @@
 .search-box input {
   width: 100%;
 }
+
+.ai-hidden{
+    display:none !important;
+}
