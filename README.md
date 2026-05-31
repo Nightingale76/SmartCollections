@@ -1,29 +1,128 @@
 # Memora智能收藏夹——收藏即记忆
 
-一个 Chrome/Edge 浏览器插件，帮助你提取、管理和导出抖音/小红书收藏内容。
+**简介：**一个 Chrome/Edge 浏览器插件，帮助你高效归类、检索和导出小红书/抖音收藏笔记/视频内容。
 
-## 
+## 功能
 
-1. **提取收藏** - 从抖音/小红书当前页面提取可见的收藏卡片信息
-2. **智能标签** - 调用千问3.6-plus接口智能生成标签
-3. **收藏夹管理** - 支持以收藏夹形式归类内容，收藏夹+标签形式高效检索
-4. **收藏列表导出** - 导出收藏内容为 Markdown 格式，适合复制到 Obsidian
+1. **抓取收藏**  从小红书/抖音当前页面抓取可见的收藏笔记/视频。
+2. **智能归类**  ai大模型后台智能识别笔记/视频，自动归类、生成标签。
+3. **收藏夹管理**  支持以收藏夹形式归类笔记/视频，收藏夹+标签形式高效检索。
+4. **内容导出**  导出收藏内容为 Markdown 格式文件，可使用 Obsidian 等笔记软件进行进一步整理。
 
-## 食用方式
+## 部署方式
 
-1. 克隆本仓库或下载ZIP到本地
-2. 打开你的 Chrome/Edge 浏览器
-3. 访问 `chrome://extensions/`或`edge://extensions/`
-4. 开启「开发者模式」
-5. 点击「加载已解压的扩展程序」
-6. 选择你将本项目下载到的本地目录
+1. 点击“Code”绿色图标，选择“Download ZIP“下载到本地并解压，或运行`git clone https://github.com/Nightingale76/SmartCollections.git` 将源代码文件夹下载到本地（需安装Git工具）。
 
-### 3. 测试功能
+2. 打开你的 ![image-20260601014856590](E:\Program\SmartCollections\ReadmeImgs\image-20260601014856590.png)Chrome/![image-20260601015030661](E:\Program\SmartCollections\ReadmeImgs\image-20260601015030661.png)Edge 浏览器。
 
-1. 打开抖音/小红书网站并登录
-2. 进入个人主页，
-3. **刷新一次页面**（确保扩展在页面加载前注入，才能读到首屏数据）
-4. 确保页面上有可见的收藏卡片（可先向下滚动加载几屏）
-4. 点击浏览器工具栏中的插件图标
-5. 点击「提取当前页面收藏」按钮
-6. 收藏内容自动分类
+3. 访问 `chrome://extensions/`或`edge://extensions/`，进入扩展管理页面。
+
+4. 开启「开发人员模式」。
+
+   ![image-20260601015944073](E:\Program\SmartCollections\ReadmeImgs\image-20260601015944073.png)
+
+   
+
+   ![image-20260601015907235](E:\Program\SmartCollections\ReadmeImgs\image-20260601015907235.png)
+
+5. 点击「加载已解压的扩展程序」。
+
+   ![image-20260601020044679](E:\Program\SmartCollections\ReadmeImgs\image-20260601020044679.png)
+
+   ![image-20260601020115546](E:\Program\SmartCollections\ReadmeImgs\image-20260601020115546.png)
+
+6. 选择本项目所在的本地目录即可加载“Memora”扩展，在扩展程序中找到它并保持开启状态。
+
+7. 点击浏览器右上角拼图图标![image-20260601021351787](E:\Program\SmartCollections\ReadmeImgs\image-20260601021351787.png)/![image-20260601021403720](E:\Program\SmartCollections\ReadmeImgs\image-20260601021403720.png)打开扩展程序列表，就可以找到我们的Memora了。如果需要更加快捷的启动，可以点击图钉![image-20260601021608214](E:\Program\SmartCollections\ReadmeImgs\image-20260601021608214.png)/![image-20260601021622407](E:\Program\SmartCollections\ReadmeImgs\image-20260601021622407.png)按钮把它固定到工具栏。
+
+   ![image-20260601021318628](E:\Program\SmartCollections\ReadmeImgs\image-20260601021318628.png)
+
+## 如何启动
+
+1. 打开小红书/抖音网页版并登录。
+
+   ![PixPin_2026-06-01_02-07-03](C:\Users\lenovo\AppData\Local\PixPin\Temp\PixPin_2026-06-01_02-07-03.png)https://www.xiaohongshu.com/
+
+   ![PixPin_2026-06-01_02-07-58](C:\Users\lenovo\AppData\Local\PixPin\Temp\PixPin_2026-06-01_02-07-58.png)https://www.douyin.com/
+
+2. 进入个人主页，打开你的收藏页面。
+
+3. **刷新一次页面**（确保扩展在页面加载前注入，才能读到首屏数据），且确保页面上有可见的收藏卡片。
+
+4. 从扩展程序中找到Memora插件并点击，或点击浏览器右上角工具栏中的Memora插件图标（若已固定），即可打开智能收藏夹界面。
+
+   ![image-20260601023014838](E:\Program\SmartCollections\ReadmeImgs\image-20260601023014838.png)
+
+5. “简洁模式”下由右上角进入“桌宠模式”；“桌宠模式”下点击精灵本体唤出菜单，选择打开知识库-设置-切换到简洁模式，然后再次点击插件，即可切换为“简洁模式”。
+
+   ![image-20260601022437950](E:\Program\SmartCollections\ReadmeImgs\image-20260601022437950.png)
+
+![image-20260601022605493](E:\Program\SmartCollections\ReadmeImgs\image-20260601022605493.png)
+
+
+
+## 食用方法（以简洁模式下为例）
+
+1.点击“提取本页收藏”，可以抓取当前页面内笔记/视频的封面、标题、作者等信息，AI自动识别内容生成相关标签，并分类进入左侧收藏夹。整个过程无需繁琐的手动整理。
+
+2.如果你对~~人工智障~~AI自动分类的结果不满意，还可以通过拖拽笔记/视频进入目标收藏夹的方式手动调整。点击“管理”可进入管理模式，在此状态下支持左侧收藏夹的新增、删除（支持撤销）、重命名，支持每个笔记/视频下面的标签的新增与删除。
+
+3.点击已归类的一个笔记/视频，可以直接访问相应小红书/抖音链接，提高检索效率！
+
+4.点击“导出收藏列表”，可以下载含有每个笔记/视频标题、作者、封面、链接等信息的Markdown格式文件到本地，方便使用Obsidian打开或导入Notion，进行便捷的笔记整理。
+
+5.支持切换主题，适应抖音、小红书、b站等不同平台用户的视觉偏好！
+
+![image-20260601030946376](E:\Program\SmartCollections\ReadmeImgs\image-20260601030946376.png)
+
+![image-20260601030443161](E:\Program\SmartCollections\ReadmeImgs\image-20260601030443161.png)
+
+![image-20260601030649035](E:\Program\SmartCollections\ReadmeImgs\image-20260601030649035.png)
+
+## 注意
+
+处于代码安全的考虑，我们的插件目前无法做到内置AI大模型，需要用户手动输入API key和模型（默认是开发时期使用的qwen3.6plus）。
+
+操作方法：两种模式下都是设置-输入API key-保存。
+
+
+
+## 技术实现
+
+开发框架：Chrome Extension Manifest V3 插件开发
+
+语言：JavaScript + HTML + CSS
+
+AI功能：后端调用大模型 API 返回结构化输出结果
+
+本地存储：Local Storage
+
+## 项目结构
+
+```
+SmartCollections/
+├─assets/
+├─content/
+├─platforms/
+├─popup/
+├─shared/
+├─sidepanel/
+└─simple-popup/
+```
+
+## 未来规划
+
+- 提高标签识别与文件夹划分智能程度
+- 支持更多常见平台（如B站）
+- 不同平台的数据可以独立保存，便于多平台用户管理
+- 桌宠模式升级桌面客户端，提高用户管理收藏夹的体验；桌宠可在浏览器以外交互
+- 引入数据库，持久化保存已注册的用户的收藏夹状态，防止数据丢失
+- 开发移动端App或插件，适应App版小红书/抖音，贴合更多用户日常使用习惯
+
+## License
+
+MIT License
+
+## 致谢
+
+感谢**抖音AI创变者计划**提供的平台支持。
