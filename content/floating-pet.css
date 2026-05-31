@@ -305,3 +305,22 @@
 #floating-pet .pet-body.thinking:hover {
   box-shadow: 0 12px 32px rgba(245, 158, 11, 0.5);
 }
+
+#floating-pet .pet-bubble::after {
+  content: '';
+
+  position: absolute;
+
+  right: 18px;
+  bottom: -8px;
+
+  width: 14px;
+  height: 14px;
+
+  transform: rotate(45deg);
+
+  background: rgba(15, 15, 25, 0.98);
+
+  border-right: 1px solid rgba(37, 244, 238, 0.28);
+  border-bottom: 1px solid rgba(37, 244, 238, 0.28);
+}
