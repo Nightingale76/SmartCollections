@@ -1,344 +1,359 @@
 /**
- * Router - IIFE 格式（无 ES6 模块依赖）
- * 负责平台检测和内容提取路由
+ * Content Router - IIFE 格式
+ * 统一处理多平台内容提取的路由
  */
-
 (function() {
   'use strict';
 
-  console.log('[router] router.js loading...');
+  console.log('[router] loading...');
 
   const PLATFORMS = {
     XIAOHONGSHU: 'xiaohongshu',
     DOUYIN: 'douyin'
   };
 
-  const PLATFORM_DOMAINS = {
-    'www.xiaohongshu.com': 'xiaohongshu',
-    'xiaohongshu.com': 'xiaohongshu',
-    'www.douyin.com': 'douyin',
-    'douyin.com': 'douyin'
-  };
-
-  let bridgeCollectedItems = [];
-  let bridgeReady = false;
-
   function getCurrentPlatform() {
     const hostname = window.location.hostname;
-    console.log('[router] Current hostname:', hostname);
-    return PLATFORM_DOMAINS[hostname] || null;
+    if (hostname.includes('xiaohongshu.com')) return PLATFORMS.XIAOHONGSHU;
+    if (hostname.includes('douyin.com')) return PLATFORMS.DOUYIN;
+    return null;
   }
 
-  function isSupportedPlatform() {
-    return getCurrentPlatform() !== null;
+  const XHSExtractor = (function() {
+    return {
+      extract: function() {
+        const results = [];
+        const links = Array.from(document.querySelectorAll('a[href]'))
+          .filter(link => isVisible(link))
+          .filter(link => {
+            const href = link.href;
+            return href.includes('/explore/') || href.includes('/note/');
+          });
+
+        links.forEach((link, index) => {
+          const item = convertLinkToItem(link, index);
+          if (item) results.push(item);
+        });
+
+        const bridgeItems = window.XHS_PAGE_BRIDGE ? window.XHS_PAGE_BRIDGE.getItems() : [];
+        bridgeItems.forEach(item => {
+          const converted = convertBridgeItemToStandard(item);
+          if (converted) results.push(converted);
+        });
+
+        return dedupe(results);
+      }
+    };
+
+    function convertLinkToItem(link, index) {
+      const href = link.href;
+      const id = href.match(/\/(explore|note)\/([^/?#]+)/)?.[2] || `dom-${index}`;
+      const card = link.closest('[data-note-id], .note-card, section, article') || link;
+      const text = cleanText(card?.textContent || '');
+      const img = card?.querySelector('img');
+      const isVideo = card?.querySelector('video') || /video|播放/.test(text);
+
+      const textForTags = (text + ' ' + document.title).slice(0, 200);
+      const tags = window.MEMORA_AI_TAGS && window.MEMORA_AI_TAGS.generateTags
+        ? window.MEMORA_AI_TAGS.generateTags(textForTags)
+        : ['其他'];
+
+      return {
+        id: `xhs-${id}`,
+        platform: 'xiaohongshu',
+        title: pickBestTitle(getCardTextCandidates(card)) || text.slice(0, 80) || document.title,
+        url: href,
+        author: null,
+        text: text.slice(0, 500),
+        cover: img?.currentSrc || img?.src || null,
+        type: isVideo ? 'video' : 'note',
+        stats: { likes: null, comments: null, collects: null },
+        tags,
+        collectedAt: new Date().toISOString()
+      };
+    }
+
+    function convertBridgeItemToStandard(item) {
+      if (!item?.note_id) return null;
+      
+      const textForTags = (item.title || '') + ' ' + (item.author || '');
+      const tags = window.MEMORA_AI_TAGS && window.MEMORA_AI_TAGS.generateTags
+        ? window.MEMORA_AI_TAGS.generateTags(textForTags)
+        : ['其他'];
+
+      return {
+        id: `xhs-${item.note_id}`,
+        platform: 'xiaohongshu',
+        title: item.title || '小红书笔记',
+        url: item.url || `https://www.xiaohongshu.com/explore/${item.note_id}`,
+        author: item.author || null,
+        text: item.title || '',
+        cover: item.cover || null,
+        type: item.note_type === 'video' ? 'video' : 'note',
+        stats: {
+          likes: item.liked_count || null,
+          comments: null,
+          collects: null
+        },
+        tags,
+        collectedAt: new Date().toISOString()
+      };
+    }
+  })();
+
+  function extractDouyinContent() {
+    const results = [];
+
+    const links = Array.from(document.querySelectorAll('a[href]'))
+      .filter(link => isVisible(link));
+
+    links.forEach((link, index) => {
+      const href = link.href || '';
+
+      if (
+        href.includes('/video/') ||
+        href.includes('/note/') ||
+        href.includes('modal_id=')
+      ) {
+        const card = getDouyinCardContainer(link);
+        const text = cleanText(card?.textContent || '');
+        const img = card?.querySelector('img');
+        const video = card?.querySelector('video');
+
+        const id =
+          href.match(/\/video\/([^/?#]+)/)?.[1] ||
+          href.match(/\/note\/([^/?#]+)/)?.[1] ||
+          href.match(/modal_id=([^&#]+)/)?.[1] ||
+          `dom-${index}`;
+
+        const title =
+          pickBestTitle(getCardTextCandidates(card)) ||
+          text.slice(0, 80) ||
+          document.title ||
+          '抖音内容';
+
+        results.push(createDouyinItem({
+          id: id,
+          title,
+          url: href,
+          text,
+          img,
+          video
+        }));
+      }
+    });
+
+    if (results.length === 0) {
+      const mediaCards = Array.from(document.querySelectorAll('video, img'))
+        .filter(el => isVisible(el))
+        .map(el => getDouyinCardContainer(el));
+
+      mediaCards.forEach((card, index) => {
+        if (!card) return;
+
+        const text = cleanText(card.textContent || '');
+        const link = card.querySelector('a[href]');
+        const img = card.querySelector('img');
+        const video = card.querySelector('video');
+
+        const title =
+          pickBestTitle(getCardTextCandidates(card)) ||
+          text.slice(0, 80) ||
+          document.title ||
+          '抖音内容';
+
+        results.push(createDouyinItem({
+          id: `media-${index}-${title.slice(0, 8)}`,
+          title,
+          url: link?.href || window.location.href,
+          text,
+          img,
+          video
+        }));
+      });
+    }
+
+    return dedupe(results);
   }
 
-  function convertBridgeItemToStandard(item) {
+  function createDouyinItem({ id, title, url, text, img, video }) {
     const AI_TAGS = window.MEMORA_AI_TAGS;
-    const textForTags = [
-      item.title,
-      item.author,
-      item.url
-    ].filter(Boolean).join(' ');
-    
-    const tags = AI_TAGS && AI_TAGS.generateTags 
-      ? AI_TAGS.generateTags(textForTags) 
-      : [];
+    const textForTags = (title + ' ' + url).slice(0, 200);
+    const tags = AI_TAGS && AI_TAGS.generateTags
+      ? AI_TAGS.generateTags(textForTags)
+      : ['其他'];
 
     return {
-      platform: PLATFORMS.XIAOHONGSHU,
-      id: item.note_id,
-      url: item.url,
-      type: item.note_type === 'video' ? 'video' : 'note',
-      title: item.title,
-      author: item.author,
-      text: item.title,
-      cover: item.cover,
+      id: `douyin-${id}`,
+      platform: 'douyin',
+      title,
+      url,
+      author: null,
+      text: text.slice(0, 500),
+      cover: img?.currentSrc || img?.src || video?.poster || null,
+      type: 'video',
       stats: {
-        likes: item.liked_count,
+        likes: null,
         comments: null,
         collects: null
       },
-      tags: tags,
-      collectedAt: item.captured_at,
-      _raw: item
+      tags,
+      collectedAt: new Date().toISOString()
     };
   }
 
-  function extractFromPageBridge() {
-    console.log('[router] Trying to extract from Page Bridge, items:', bridgeCollectedItems.length);
-    
-    if (bridgeCollectedItems.length > 0) {
-      return bridgeCollectedItems.map(convertBridgeItemToStandard);
+  function getDouyinCardContainer(el) {
+    let current = el;
+    let best = el;
+    let bestScore = -999;
+
+    for (let depth = 0; current && depth < 8; depth++) {
+      const rect = current.getBoundingClientRect();
+      const text = cleanText(current.textContent);
+      const mediaCount = current.querySelectorAll?.('img, video').length || 0;
+      const linkCount = current.querySelectorAll?.('a[href]').length || 0;
+
+      let score = 0;
+
+      if (rect.width >= 120) score += 2;
+      if (rect.height >= 80) score += 2;
+      if (rect.width <= 680) score += 2;
+      if (rect.height <= 900) score += 2;
+      if (text.length >= 2 && text.length <= 400) score += 4;
+      if (mediaCount >= 1 && mediaCount <= 4) score += 3;
+      if (linkCount >= 1 && linkCount <= 5) score += 2;
+
+      if (rect.width > window.innerWidth * 0.95) score -= 8;
+      if (rect.height > window.innerHeight * 0.95) score -= 8;
+
+      score -= depth * 0.3;
+
+      if (score > bestScore) {
+        bestScore = score;
+        best = current;
+      }
+
+      current = current.parentElement;
     }
-    return null;
+
+    return best;
+  }
+
+  function isVisible(el) {
+    if (!el) return false;
+    const rect = el.getBoundingClientRect();
+    const style = window.getComputedStyle(el);
+    return rect.width > 0 &&
+      rect.height > 0 &&
+      style.display !== 'none' &&
+      style.visibility !== 'hidden' &&
+      Number(style.opacity) !== 0;
+  }
+
+  function cleanText(text) {
+    return String(text || '')
+      .replace(/\s+/g, ' ')
+      .replace(/^(赞|评论|收藏|分享)\s*\d*$/g, '')
+      .trim();
+  }
+
+  function pickBestTitle(candidates) {
+    const blocked = /^(赞|评论|收藏|分享|关注|粉丝|获赞|更多|展开|收起|\d+|[0-9.]+万)$/;
+
+    return candidates
+      .map(cleanText)
+      .filter(text => text.length >= 2 && text.length <= 120)
+      .filter(text => !blocked.test(text))
+      .sort((a, b) => {
+        const aScore = scoreTitleCandidate(a);
+        const bScore = scoreTitleCandidate(b);
+        return bScore - aScore;
+      })[0] || '';
+  }
+
+  function scoreTitleCandidate(text) {
+    let score = 0;
+    if (/[\u4e00-\u9fa5]/.test(text)) score += 4;
+    if (text.length >= 6 && text.length <= 40) score += 3;
+    if (/[，。！？、,.!?]/.test(text)) score += 1;
+    if (/赞|评论|收藏|分享|关注/.test(text)) score -= 4;
+    if (/^\d+(\.\d+)?万?$/.test(text)) score -= 8;
+    return score;
+  }
+
+  function getCardTextCandidates(card) {
+    if (!card) return [];
+
+    const candidates = [];
+    const attrs = ['aria-label', 'title', 'alt'];
+
+    attrs.forEach(attr => {
+      const value = card.getAttribute?.(attr);
+      if (value) candidates.push(value);
+    });
+
+    card.querySelectorAll?.('h1, h2, h3, h4, [title], [aria-label], img[alt], span, div, p').forEach(el => {
+      attrs.forEach(attr => {
+        const value = el.getAttribute?.(attr);
+        if (value) candidates.push(value);
+      });
+
+      const text = cleanText(el.textContent);
+      if (text && text.length <= 160) {
+        candidates.push(text);
+      }
+    });
+
+    let current = card.parentElement;
+    let depth = 0;
+    while (current && depth < 3) {
+      current.querySelectorAll?.('h1, h2, h3, h4, [title], [aria-label], img[alt], span, div, p').forEach(el => {
+        attrs.forEach(attr => {
+          const value = el.getAttribute?.(attr);
+          if (value) candidates.push(value);
+        });
+
+        const text = cleanText(el.textContent);
+        if (text && text.length <= 160) {
+          candidates.push(text);
+        }
+      });
+
+      current = current.parentElement;
+      depth++;
+    }
+
+    return candidates;
+  }
+
+  function dedupe(collections) {
+    const seen = new Set();
+    return collections.filter(item => {
+      const key = item.id || item.url;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
   }
 
   function extractCurrentPlatformContent() {
     const platform = getCurrentPlatform();
-    console.log('[router] Extracting content for platform:', platform);
 
-    switch (platform) {
-      case PLATFORMS.XIAOHONGSHU:
-        console.log('[router] Using XHS extractor');
-        const bridgeResult = extractFromPageBridge();
-        if (bridgeResult && bridgeResult.length > 0) {
-          console.log('[router] Using Page Bridge data, count:', bridgeResult.length);
-          return bridgeResult;
-        }
-        console.log('[router] Falling back to DOM extraction');
-        return XHSExtractor.extract();
-      case PLATFORMS.DOUYIN:
-        console.log('[router] Using Douyin extractor');
-        if (window.XHS_DOUYIN_EXTRACTOR) {
-          return window.XHS_DOUYIN_EXTRACTOR.extractDouyinContent();
-        } else {
-          console.error('[router] XHS_DOUYIN_EXTRACTOR not found!');
-          return [];
-        }
-      default:
-        console.log('[router] Unknown platform, returning empty');
-        return [];
+    if (platform === PLATFORMS.XIAOHONGSHU) {
+      return XHSExtractor.extract();
     }
+
+    if (platform === PLATFORMS.DOUYIN) {
+      return extractDouyinContent();
+    }
+
+    return [];
   }
-
-  function getPlatformSuggestion() {
-    const platform = getCurrentPlatform();
-
-    switch (platform) {
-      case PLATFORMS.XIAOHONGSHU:
-        return '要不要整理当前收藏页？✨';
-      case PLATFORMS.DOUYIN:
-        return '要不要整理当前已加载的视频？🎬';
-      default:
-        return '发现了有趣的内容，要收藏吗？';
-    }
-  }
-
-  function isFavoritePage() {
-    const platform = getCurrentPlatform();
-
-    switch (platform) {
-      case PLATFORMS.XIAOHONGSHU:
-        return window.location.href.includes('/favorites') ||
-               window.location.href.includes('/collection');
-      case PLATFORMS.DOUYIN:
-        if (window.XHS_DOUYIN_EXTRACTOR) {
-          return window.XHS_DOUYIN_EXTRACTOR.isDouyinFavoritePage();
-        }
-        return false;
-      default:
-        return false;
-    }
-  }
-
-  function handleBridgeMessage(event) {
-    if (event.data.source === 'xhs-smart-collection') {
-      console.log('[router] Received bridge message:', event.data.type);
-      
-      if (event.data.type === 'BRIDGE_READY') {
-        bridgeReady = true;
-        console.log('[router] Bridge ready, triggering scan...');
-        window.postMessage({ type: 'xhs-smart-collection:scan-now' }, '*');
-      } else if (event.data.type === 'INITIAL_SNAPSHOT' || 
-                 event.data.type === 'COLLECT_PAGE') {
-        const items = event.data.payload.items || [];
-        bridgeCollectedItems = bridgeCollectedItems.concat(items);
-        console.log('[router] Received items from bridge, total now:', bridgeCollectedItems.length);
-      }
-    }
-  }
-
-  window.addEventListener('message', handleBridgeMessage);
-
-  const XHSExtractor = {
-    extract: function() {
-      console.log('[router] XHSExtractor.extract() called');
-
-      const collections = [];
-
-      const collectionCards = document.querySelectorAll('[data-note-id], .note-card, .feeds-item, .flow-item, .note-item');
-      console.log('[router] Found potential cards:', collectionCards.length);
-
-      collectionCards.forEach(function(card) {
-        const item = this.extractCardInfo(card);
-        if (item && item.id && item.url) {
-          const exists = collections.some(function(c) { return c.id === item.id; });
-          if (!exists) {
-            collections.push(item);
-          }
-        }
-      }.bind(this));
-
-      if (collections.length === 0) {
-        const alternativeCards = document.querySelectorAll('a[href*="/note/"]');
-        console.log('[router] Trying alternative selector, found:', alternativeCards.length);
-
-        alternativeCards.forEach(function(card) {
-          const item = this.extractCardInfo(card);
-          if (item && item.id && item.url) {
-            const exists = collections.some(function(c) { return c.id === item.id; });
-            if (!exists) {
-              collections.push(item);
-            }
-          }
-        }.bind(this));
-      }
-
-      console.log('[router] Total extracted items:', collections.length);
-      return collections;
-    },
-
-    extractCardInfo: function(card) {
-      const AI_TAGS = window.MEMORA_AI_TAGS;
-      
-      const item = {
-        platform: PLATFORMS.XIAOHONGSHU,
-        id: null,
-        url: null,
-        type: 'note',
-        title: null,
-        author: null,
-        text: null,
-        cover: null,
-        stats: {
-          likes: null,
-          comments: null,
-          collects: null
-        },
-        collectedAt: new Date().toISOString()
-      };
-
-      const noteId = card.getAttribute('data-note-id') || card.getAttribute('data-id') || card.getAttribute('id');
-
-      const linkElement = card.querySelector('a[href*="/note/"]') || card.closest('a[href*="/note/"]') || card.querySelector('a');
-
-      if (linkElement) {
-        const href = linkElement.href;
-        const match = href.match(/\/note\/([a-zA-Z0-9]+)/);
-        if (match) {
-          item.id = match[1];
-        } else {
-          item.id = href;
-        }
-        item.url = href;
-      } else if (noteId) {
-        item.id = noteId;
-        item.url = 'https://www.xiaohongshu.com/note/' + noteId;
-      }
-
-      if (!item.id) return null;
-
-      const titleElements = card.querySelectorAll('h3, .title, .note-title, .content-title, .desc, .note-desc, [class*="title"], [class*="desc"]');
-      for (let i = 0; i < titleElements.length; i++) {
-        const el = titleElements[i];
-        const text = el.textContent.trim();
-        if (text && text.length > 0 && text.length < 200) {
-          item.title = text;
-          item.text = text;
-          break;
-        }
-      }
-
-      if (!item.title) {
-        const titleAttr = card.getAttribute('title');
-        if (titleAttr && titleAttr.length > 0 && titleAttr.length < 200) {
-          item.title = titleAttr;
-          item.text = titleAttr;
-        }
-      }
-
-      const authorElements = card.querySelectorAll('.user-name, .author, .nickname, [class*="user"], [class*="author"]');
-      for (let i = 0; i < authorElements.length; i++) {
-        const el = authorElements[i];
-        const text = el.textContent.trim();
-        if (text && text.length > 0 && text.length < 50) {
-          item.author = text;
-          break;
-        }
-      }
-
-      const imgElement = card.querySelector('img[src*="http"]');
-      if (imgElement) {
-        let src = imgElement.src || imgElement.getAttribute('data-src') || imgElement.getAttribute('data-lazy-src');
-        if (src) {
-          src = src.replace(/\/w\d+\/h\d+/, '/w600/h600');
-          item.cover = src;
-        }
-      }
-
-      const statsElements = card.querySelectorAll('span, .like, .comment, .collect, [class*="like"], [class*="comment"], [class*="collect"], [class*="count"]');
-      statsElements.forEach(function(el) {
-        const text = el.textContent.trim();
-        const num = parseInt(text.replace(/[^0-9]/g, ''));
-        if (!isNaN(num) && num > 0) {
-          const classList = el.className.toLowerCase();
-          if (classList.includes('like') || classList.includes('thumb') || classList.includes('heart')) {
-            item.stats.likes = num;
-          } else if (classList.includes('comment') || classList.includes('msg')) {
-            item.stats.comments = num;
-          } else if (classList.includes('collect') || classList.includes('save') || classList.includes('bookmark')) {
-            item.stats.collects = num;
-          }
-        }
-      });
-
-      const textForTags = [
-        item.title,
-        item.author,
-        item.url
-      ].filter(Boolean).join(' ');
-      
-      item.tags = AI_TAGS && AI_TAGS.generateTags 
-        ? AI_TAGS.generateTags(textForTags) 
-        : ['其他'];
-
-      return item;
-    }
-  };
-
-  window.addEventListener('PET_EXTRACT_REQUEST', function(event) {
-    const platform = (event.detail && event.detail.platform) || null;
-
-    console.log('[router] Received PET_EXTRACT_REQUEST, platform:', platform);
-
-    if (!platform) {
-      window.postMessage({
-        type: 'FROM_BACKGROUND',
-        action: 'EXTRACT_ERROR',
-        message: '无法识别当前平台'
-      }, '*');
-      return;
-    }
-
-    try {
-      const items = extractCurrentPlatformContent();
-      console.log('[router] Extracted items count:', items.length);
-
-      window.postMessage({
-        type: 'FROM_BACKGROUND',
-        action: 'EXTRACT_COMPLETE',
-        count: items.length,
-        items: items
-      }, '*');
-    } catch (error) {
-      console.error('[router] Extract error:', error);
-      window.postMessage({
-        type: 'FROM_BACKGROUND',
-        action: 'EXTRACT_ERROR',
-        message: '提取失败: ' + error.message
-      }, '*');
-    }
-  });
 
   window.XHS_ROUTER = {
-    getCurrentPlatform: getCurrentPlatform,
-    isSupportedPlatform: isSupportedPlatform,
-    extractCurrentPlatformContent: extractCurrentPlatformContent,
-    getPlatformSuggestion: getPlatformSuggestion,
-    isFavoritePage: isFavoritePage
+    getCurrentPlatform,
+    extractCurrentPlatformContent
   };
 
-  console.log('[router] XHS_ROUTER exposed to window');
-
+  console.log('[router] loaded');
 })();
