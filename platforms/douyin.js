@@ -79,26 +79,33 @@
 
   function createDouyinItem({ id, title, url, text, img, video }) {
     const AI_TAGS = window.MEMORA_AI_TAGS;
-    const textForTags = [title, url].filter(Boolean).join(' ');
-    const tags = AI_TAGS && AI_TAGS.generateTags 
-      ? AI_TAGS.generateTags(textForTags) 
+  
+    const cleanTitle = normalizeDouyinTitle(title, text, url);
+  
+    const textForTags = [
+      cleanTitle,
+      text,
+      url
+    ].filter(Boolean).join(' ');
+  
+    const tags = AI_TAGS && AI_TAGS.generateTags
+      ? AI_TAGS.generateTags(textForTags)
       : ['其他'];
-
+  
     return {
       id: `douyin-${id}`,
       platform: 'douyin',
-      title,
+      title: cleanTitle,
       url,
       author: null,
-      text: text.slice(0, 500),
+      text: cleanCardText(text).slice(0, 500),
       cover: img?.currentSrc || img?.src || video?.poster || null,
       type: 'video',
-      stats: {
-        likes: null,
-        comments: null,
-        collects: null
-      },
-      tags,
+  
+      // 抖音不展示浏览量/点赞量，避免误把播放量当互动数据
+      stats: null,
+  
+      tags: tags && tags.length > 0 ? tags : ['其他'],
       collectedAt: new Date().toISOString()
     };
   }
