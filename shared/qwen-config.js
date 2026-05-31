@@ -4,7 +4,7 @@
   // Aliyun Bailian DashScope API config
   // Get API key: https://bailian.console.aliyun.com/
 
-  const DASHSCOPE_API_KEY = 'sk-64a8de4019a6427e83bc90c6ff87831c'; // 用户需要自行填写
+  const DASHSCOPE_API_KEY = ''; // 用户需要自行填写
   const QWEN_MODEL = 'qwen3.6-plus';
   const QWEN_BASE_URL = 'https://dashscope.aliyuncs.com/compatible-mode/v1';
 
