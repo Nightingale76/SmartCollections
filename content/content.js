@@ -67,17 +67,7 @@
     }
   }
 
-  function extractCurrentPlatformContent() {
-    const platform = getCurrentPlatform();
-    console.log('[content] extractCurrentPlatformContent for platform:', platform);
 
-    if (!window.XHS_ROUTER) {
-      console.error('[content] XHS_ROUTER not found!');
-      return [];
-    }
-
-    return window.XHS_ROUTER.extractCurrentPlatformContent();
-  }
 
   chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     console.log('[content] Received message:', request.action);
@@ -85,9 +75,19 @@
     if (request.action === 'extractCollections') {
       console.log('[content] Handling extractCollections request');
       try {
-        const items = extractCurrentPlatformContent();
-        console.log('[content] Extracted items count:', items ? items.length : 0);
-        sendResponse({ success: true, data: items || [] });
+        if (!window.XHS_ROUTER) {
+          console.error('[content] XHS_ROUTER not found!');
+          sendResponse({ success: true, data: [] });
+          return true;
+        }
+        
+        window.XHS_ROUTER.extractCollectionsFromPage().then(function(items) {
+          console.log('[content] Extracted items count:', items ? items.length : 0);
+          sendResponse({ success: true, data: items || [] });
+        }).catch(function(error) {
+          console.error('[content] Extract error:', error);
+          sendResponse({ success: false, error: error.message });
+        });
       } catch (error) {
         console.error('[content] Extract error:', error);
         sendResponse({ success: false, error: error.message });
@@ -139,15 +139,23 @@
 
     setTimeout(function() {
       console.log('[content] Checking for content to suggest');
-      const items = extractCurrentPlatformContent();
-      const pet = window.XHS_FLOATTING_PET.getInstance();
-      console.log('[content] Extracted content count:', items ? items.length : 0);
-
-      if (items && items.length > 0 && !hasSuggested && pet) {
-        pet.showMessage(getPlatformSuggestion());
-        hasSuggested = true;
-        console.log('[content] Suggested after finding content');
+      if (!window.XHS_ROUTER) {
+        console.error('[content] XHS_ROUTER not found!');
+        return;
       }
+      
+      window.XHS_ROUTER.extractCollectionsFromPage().then(function(items) {
+        const pet = window.XHS_FLOATTING_PET.getInstance();
+        console.log('[content] Extracted content count:', items ? items.length : 0);
+
+        if (items && items.length > 0 && !hasSuggested && pet) {
+          pet.showMessage(getPlatformSuggestion());
+          hasSuggested = true;
+          console.log('[content] Suggested after finding content');
+        }
+      }).catch(function(err) {
+        console.error('[content] Error checking content:', err);
+      });
     }, 5000);
   }
 
