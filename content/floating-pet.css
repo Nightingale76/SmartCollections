@@ -132,23 +132,34 @@
 }
 
 #floating-pet .pet-bubble {
-  position: absolute;
-  bottom: 80px;
-  right: 70px;
-  background: rgba(15, 15, 25, 0.98);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(99, 102, 241, 0.3);
-  border-radius: 16px;
-  padding: 12px 16px;
-  max-width: 220px;
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(10px) scale(0.9);
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-  z-index: 2147483646;
-}
+    position: absolute;
+    bottom: 80px;
+    right: 70px;
+  
+    background: rgba(15, 15, 25, 0.98);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  
+    border: 1px solid rgba(37, 244, 238, 0.28);
+  
+    border-radius: 18px;
+  
+    padding: 12px 16px;
+  
+    min-width: 260px;
+    max-width: 360px;
+  
+    opacity: 0;
+    visibility: hidden;
+  
+    transform: translateY(10px) scale(0.9);
+  
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+  
+    z-index: 2147483646;
+  }
 
 #floating-pet .pet-bubble.show {
   opacity: 1;
@@ -158,9 +169,20 @@
 
 #floating-pet .bubble-text {
   color: #f1f5f9;
+
   font-size: 13px;
-  line-height: 1.5;
+
+  line-height: 1.7;
+
   display: block;
+
+  white-space: normal;
+
+  word-break: keep-all;
+
+  overflow-wrap: break-word;
+
+  text-align: left;
 }
 
 #floating-pet .pet-body {
