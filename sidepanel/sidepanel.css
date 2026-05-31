@@ -39,6 +39,7 @@
 
 .sidebar-nav {
   flex: 1;
+  min-width: 52px;
   padding: 16px 12px;
   display: flex;
   flex-direction: column;
@@ -580,4 +581,25 @@
   color: var(--primary-light);
   font-size: 10px;
   font-weight: 700;
+}
+
+.search-box .glass-input {
+  min-width: 52px;
+  padding-left: 14px;
+}
+
+.search-box .glass-input::placeholder {
+  opacity: 1;
+}
+
+.content-header {
+  min-width: 0;
+}
+
+.filter-controls {
+  flex-shrink: 0;
+}
+
+.search-box input {
+  width: 100%;
 }
