@@ -110,6 +110,36 @@
     };
   }
 
+  function normalizeDouyinTitle(title, text, url) {
+    const candidates = [
+      title,
+      text
+    ]
+      .map(cleanCardText)
+      .filter(Boolean)
+      .map(t => t.replace(/\s+/g, ' ').trim())
+      .filter(t => t.length >= 2 && t.length <= 80)
+      .filter(t => !isBadDouyinTitle(t));
+  
+    if (candidates.length > 0) {
+      return candidates[0];
+    }
+  
+    const id =
+      url?.match(/\/video\/([^/?#]+)/)?.[1] ||
+      url?.match(/\/note\/([^/?#]+)/)?.[1] ||
+      url?.match(/modal_id=([^&#]+)/)?.[1];
+  
+    return id ? `抖音视频 ${id.slice(0, 8)}` : '抖音内容';
+  }
+  
+  function isBadDouyinTitle(text) {
+    return /^(抖音|抖音精选|推荐|关注|朋友|我的|搜索|登录|投稿|私信|通知|收藏|喜欢|作品|暂无内容)$/i.test(text) ||
+      /^https?:\/\//.test(text) ||
+      /^\d+(\.\d+)?万?$/.test(text) ||
+      text.includes('搜索你感兴趣的内容');
+  }
+
   function getDouyinCardContainer(el) {
     let current = el;
     let best = el;
@@ -240,25 +270,6 @@
         candidates.push(text);
       }
     });
-
-    let current = card.parentElement;
-    let depth = 0;
-    while (current && depth < 3) {
-      current.querySelectorAll?.('h1, h2, h3, h4, [title], [aria-label], img[alt], span, div, p').forEach(el => {
-        attrs.forEach(attr => {
-          const value = el.getAttribute?.(attr);
-          if (value) candidates.push(value);
-        });
-
-        const text = cleanCardText(el.textContent);
-        if (text && text.length <= 160) {
-          candidates.push(text);
-        }
-      });
-
-      current = current.parentElement;
-      depth++;
-    }
 
     return candidates;
   }
