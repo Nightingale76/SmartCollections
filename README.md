@@ -41,9 +41,9 @@
 
 1. 打开小红书/抖音网页版并登录。
 
-   ![PixPin_2026-06-01_02-07-03](C:/Users/lenovo/AppData/Local/PixPin/Temp/PixPin_2026-06-01_02-07-03.png)https://www.xiaohongshu.com/
+   小红书：https://www.xiaohongshu.com 
 
-   ![PixPin_2026-06-01_02-07-58](C:/Users/lenovo/AppData/Local/PixPin/Temp/PixPin_2026-06-01_02-07-58.png)https://www.douyin.com/
+   抖音：https://www.douyin.com/
 
 2. 进入个人主页，打开你的收藏页面。
 
@@ -125,4 +125,4 @@ MIT License
 
 ## 致谢
 
-感谢**抖音AI创变者计划**提供的平台支持。
+本项目为抖音AI创变者计划2026｜黑客松联赛「珠海伶仃洋站」比赛作品，感谢比赛方提供的平台支持。
