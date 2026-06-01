@@ -13,37 +13,37 @@
 
 1. 点击“Code”绿色图标，选择“Download ZIP“下载到本地并解压，或运行`git clone https://github.com/Nightingale76/SmartCollections.git` 将源代码文件夹下载到本地（需安装Git工具）。
 
-2. 打开你的 ![image-20260601014856590](ReadmeImgs\image-20260601014856590.png)Chrome/![image-20260601015030661](ReadmeImgs\image-20260601015030661.png)Edge 浏览器。
+2. 打开你的 ![image-20260601014856590](ReadmeImgs/image-20260601014856590.png)Chrome/![image-20260601015030661](ReadmeImgs/image-20260601015030661.png)Edge 浏览器。
 
 3. 访问 `chrome://extensions/`或`edge://extensions/`，进入扩展管理页面。
 
 4. 开启「开发人员模式」。
 
-   ![image-20260601015944073](ReadmeImgs\image-20260601015944073.png)
+   ![image-20260601015944073](ReadmeImgs/image-20260601015944073.png)
 
    
 
-   ![image-20260601015907235](ReadmeImgs\image-20260601015907235.png)
+   ![image-20260601015907235](ReadmeImgs/image-20260601015907235.png)
 
 5. 点击「加载已解压的扩展程序」。
 
-   ![image-20260601020044679](ReadmeImgs\image-20260601020044679.png)
+   ![image-20260601020044679](ReadmeImgs/image-20260601020044679.png)
 
-   ![image-20260601020115546](ReadmeImgs\image-20260601020115546.png)
+   ![image-20260601020115546](ReadmeImgs/image-20260601020115546.png)
 
 6. 选择本项目所在的本地目录即可加载“Memora”扩展，在扩展程序中找到它并保持开启状态。
 
-7. 点击浏览器右上角拼图图标![image-20260601021351787](ReadmeImgs\image-20260601021351787.png)/![image-20260601021403720](ReadmeImgs\image-20260601021403720.png)打开扩展程序列表，就可以找到我们的Memora了。如果需要更加快捷的启动，可以点击图钉![image-20260601021608214](ReadmeImgs\image-20260601021608214.png)/![image-20260601021622407](ReadmeImgs\image-20260601021622407.png)按钮把它固定到工具栏。
+7. 点击浏览器右上角拼图图标![image-20260601021351787](ReadmeImgs/image-20260601021351787.png)/![image-20260601021403720](ReadmeImgs/image-20260601021403720.png)打开扩展程序列表，就可以找到我们的Memora了。如果需要更加快捷的启动，可以点击图钉![image-20260601021608214](ReadmeImgs/image-20260601021608214.png)/![image-20260601021622407](ReadmeImgs/image-20260601021622407.png)按钮把它固定到工具栏。
 
-   ![image-20260601021318628](ReadmeImgs\image-20260601021318628.png)
+   ![image-20260601021318628](ReadmeImgs/image-20260601021318628.png)
 
 ## 如何启动
 
 1. 打开小红书/抖音网页版并登录。
 
-   ![PixPin_2026-06-01_02-07-03](C:\Users\lenovo\AppData\Local\PixPin\Temp\PixPin_2026-06-01_02-07-03.png)https://www.xiaohongshu.com/
+   ![PixPin_2026-06-01_02-07-03](C:/Users/lenovo/AppData/Local/PixPin/Temp/PixPin_2026-06-01_02-07-03.png)https://www.xiaohongshu.com/
 
-   ![PixPin_2026-06-01_02-07-58](C:\Users\lenovo\AppData\Local\PixPin\Temp\PixPin_2026-06-01_02-07-58.png)https://www.douyin.com/
+   ![PixPin_2026-06-01_02-07-58](C:/Users/lenovo/AppData/Local/PixPin/Temp/PixPin_2026-06-01_02-07-58.png)https://www.douyin.com/
 
 2. 进入个人主页，打开你的收藏页面。
 
@@ -51,13 +51,13 @@
 
 4. 从扩展程序中找到Memora插件并点击，或点击浏览器右上角工具栏中的Memora插件图标（若已固定），即可打开智能收藏夹界面。
 
-   ![image-20260601023014838](ReadmeImgs\image-20260601023014838.png)
+   ![image-20260601023014838](ReadmeImgs/image-20260601023014838.png)
 
 5. “简洁模式”下由右上角进入“桌宠模式”；“桌宠模式”下点击精灵本体唤出菜单，选择打开知识库-设置-切换到简洁模式，然后再次点击插件，即可切换为“简洁模式”。
 
-   ![image-20260601022437950](ReadmeImgs\image-20260601022437950.png)
+   ![image-20260601022437950](ReadmeImgs/image-20260601022437950.png)
 
-![image-20260601022605493](ReadmeImgs\image-20260601022605493.png)
+![image-20260601022605493](ReadmeImgs/image-20260601022605493.png)
 
 
 
@@ -73,11 +73,11 @@
 
 5.支持切换主题，适应抖音、小红书、b站等不同平台用户的视觉偏好！
 
-![image-20260601030946376](ReadmeImgs\image-20260601030946376.png)
+![image-20260601030946376](ReadmeImgs/image-20260601030946376.png)
 
-![image-20260601030443161](ReadmeImgs\image-20260601030443161.png)
+![image-20260601030443161](ReadmeImgs/image-20260601030443161.png)
 
-![image-20260601030649035](ReadmeImgs\image-20260601030649035.png)
+![image-20260601030649035](ReadmeImgs/image-20260601030649035.png)
 
 ## 注意
 
