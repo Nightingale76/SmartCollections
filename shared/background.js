@@ -33,16 +33,60 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   return true;
 });
 
+const SETTINGS_KEY = 'xhs_settings';
+const DEFAULT_UI_MODE_MIGRATION_KEY = 'memora_default_popup_mode_applied';
+const DEFAULT_UI_MODE = 'simple';
+
+function normalizeUIMode(mode) {
+  return String(mode || '').toLowerCase() === 'full' ? 'full' : 'simple';
+}
+
+async function getStoredUIMode() {
+  try {
+    const res = await chrome.storage.local.get([SETTINGS_KEY]);
+    return normalizeUIMode(res?.[SETTINGS_KEY]?.uiMode || DEFAULT_UI_MODE);
+  } catch (e) {
+    return DEFAULT_UI_MODE;
+  }
+}
+
+async function syncActionBehavior(mode) {
+  const nextMode = normalizeUIMode(mode || await getStoredUIMode());
+  try {
+    await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: nextMode === 'full' });
+  } catch (e) {}
+}
+
+async function applyDefaultUIModeOnce() {
+  try {
+    const res = await chrome.storage.local.get([SETTINGS_KEY, DEFAULT_UI_MODE_MIGRATION_KEY]);
+    if (res[DEFAULT_UI_MODE_MIGRATION_KEY]) {
+      await syncActionBehavior();
+      return;
+    }
+
+    const base = res[SETTINGS_KEY] && typeof res[SETTINGS_KEY] === 'object' ? res[SETTINGS_KEY] : {};
+    await chrome.storage.local.set({
+      [SETTINGS_KEY]: { ...base, uiMode: DEFAULT_UI_MODE },
+      [DEFAULT_UI_MODE_MIGRATION_KEY]: true
+    });
+    await syncActionBehavior(DEFAULT_UI_MODE);
+  } catch (e) {
+    await syncActionBehavior(DEFAULT_UI_MODE);
+  }
+}
+
 async function getActiveTab() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   return tab || null;
 }
 
 async function updateSettingsUIMode(mode) {
-  const nextMode = mode === 'simple' ? 'simple' : 'full';
-  const res = await chrome.storage.local.get(['xhs_settings']);
-  const base = res.xhs_settings && typeof res.xhs_settings === 'object' ? res.xhs_settings : {};
-  await chrome.storage.local.set({ xhs_settings: { ...base, uiMode: nextMode } });
+  const nextMode = normalizeUIMode(mode);
+  const res = await chrome.storage.local.get([SETTINGS_KEY]);
+  const base = res[SETTINGS_KEY] && typeof res[SETTINGS_KEY] === 'object' ? res[SETTINGS_KEY] : {};
+  await chrome.storage.local.set({ [SETTINGS_KEY]: { ...base, uiMode: nextMode } });
+  await syncActionBehavior(nextMode);
   return nextMode;
 }
 
@@ -63,7 +107,7 @@ async function applyUIModeToTab(tab, mode) {
 }
 
 async function handleSetUIMode(request, sender) {
-  const mode = String(request.mode || '').toLowerCase() === 'simple' ? 'simple' : 'full';
+  const mode = normalizeUIMode(request.mode);
   const nextMode = await updateSettingsUIMode(mode);
   const activeTab = sender && sender.tab ? sender.tab : await getActiveTab();
   await applyUIModeToTab(activeTab, nextMode);
@@ -136,8 +180,12 @@ async function handleSaveExtractedItems(request, sender) {
   }
 }
 
-chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+applyDefaultUIModeOnce();
 
-chrome.action.onClicked.addListener(async (tab) => {
-  await chrome.sidePanel.open({ windowId: tab.windowId });
+chrome.runtime.onInstalled.addListener(() => {
+  applyDefaultUIModeOnce();
+});
+
+chrome.runtime.onStartup.addListener(() => {
+  applyDefaultUIModeOnce();
 });

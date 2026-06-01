@@ -558,7 +558,7 @@
     petInstance = new FloatingPet();
 
     chrome.storage.local.get(['xhs_settings']).then((res) => {
-      const uiMode = res?.xhs_settings?.uiMode;
+      const uiMode = res?.xhs_settings?.uiMode || 'simple';
       if (uiMode === 'simple' && petInstance) {
         petInstance.hide();
       }

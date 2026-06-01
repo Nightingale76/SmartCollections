@@ -18,7 +18,7 @@
   const FOLDERS_KEY = 'memora_folders';
   const PRESET_FOLDERS = ['美妆', '穿搭', '数码', '游戏', '旅游', '学习', '美食', '摄影', '家居', '健身', '音乐', '影视', '汽车', '母婴', '理财', '宠物', '手作'];
   let FOLDERS = [];
-  const DEFAULT_SETTINGS = { petMode: 'companion', uiMode: 'full' };
+  const DEFAULT_SETTINGS = { petMode: 'companion', uiMode: 'simple' };
   const DEFAULT_PET_SETTINGS = { petName: '小助手', petPosition: null };
 
   document.addEventListener('DOMContentLoaded', async () => {

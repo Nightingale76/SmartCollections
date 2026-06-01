@@ -4,7 +4,7 @@
   const SETTINGS_KEY = 'xhs_settings';
 
   function normalizeMode(mode) {
-    return String(mode || '').toLowerCase() === 'simple' ? 'simple' : 'full';
+    return String(mode || 'simple').toLowerCase() === 'full' ? 'full' : 'simple';
   }
 
   chrome.storage.local.get([SETTINGS_KEY]).then((res) => {
@@ -15,6 +15,6 @@
       window.location.replace('popup.html');
     }
   }).catch(() => {
-    window.location.replace('popup.html');
+    window.location.replace('../simple-popup/popup.html');
   });
 })();
